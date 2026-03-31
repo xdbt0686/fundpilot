@@ -1,0 +1,50 @@
+{
+  "VUAG": {
+    "ticker": "VUAG",
+    "symbol": "VUAG.L",
+    "latest_price": 93.86,
+    "previous_close": 93.43,
+    "daily_change_pct": 0.46,
+    "timestamp": "2026-03-31T19:38:31"
+  },
+  "CSP1": {
+    "ticker": "CSP1",
+    "symbol": "CSP1.L",
+    "latest_price": 52400.0,
+    "previous_close": 52132.0,
+    "daily_change_pct": 0.51,
+    "timestamp": "2026-03-31T19:38:31"
+  },
+  "SWDA": {
+    "ticker": "SWDA",
+    "symbol": "SWDA.L",
+    "latest_price": 9429.0,
+    "previous_close": 9386.0,
+    "daily_change_pct": 0.46,
+    "timestamp": "2026-03-31T19:38:31"
+  },
+  "HMWS": {
+    "ticker": "HMWS",
+    "symbol": "HMWO.L",
+    "latest_price": 3209.0,
+    "previous_close": 3194.75,
+    "daily_change_pct": 0.45,
+    "timestamp": "2026-03-31T19:38:31"
+  },
+  "VWRP": {
+    "ticker": "VWRP",
+    "symbol": "VWRP.L",
+    "latest_price": 123.66,
+    "previous_close": 123.24,
+    "daily_change_pct": 0.34,
+    "timestamp": "2026-03-31T19:38:31"
+  },
+  "VWRL": {
+    "ticker": "VWRL",
+    "symbol": "VWRL.L",
+    "latest_price": 120.48,
+    "previous_close": 119.94,
+    "daily_change_pct": 0.45,
+    "timestamp": "2026-03-31T19:38:31"
+  }
+}

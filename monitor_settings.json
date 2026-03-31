@@ -1,0 +1,9 @@
+{
+    "poll_interval_seconds": 300,
+    "ai_cooldown_minutes": 10,
+    "heartbeat_minutes": 30,
+    "daily_move_alert_pct": 1.5,
+    "daily_move_strong_pct": 3.0,
+    "stale_data_minutes": 20,
+    "reversal_pct": 1.0
+  }
