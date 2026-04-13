@@ -1,8 +1,17 @@
-[
-    "VUAG",
-    "CSP1",
-    "SWDA",
-    "HMWS",
-    "VWRP",
-    "VWRL"
-  ]
+{
+  "tickers": [
+    "VUAG", "CSP1", "SWDA", "HMWS", "VWRP", "VWRL",
+    "EQQQ", "IUSA", "XDWD", "IEEM",
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "BRK-B",
+    "BP.L", "SHEL.L", "AZN.L", "HSBA.L", "LLOY.L", "VOD.L",
+    "^GSPC", "^IXIC", "^FTSE",
+    "BTC-USD", "ETH-USD"
+  ],
+  "categories": {
+    "uk_etf":   ["VUAG", "CSP1", "SWDA", "HMWS", "VWRP", "VWRL", "EQQQ", "IUSA", "XDWD", "IEEM"],
+    "us_stock": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "BRK-B"],
+    "uk_stock": ["BP.L", "SHEL.L", "AZN.L", "HSBA.L", "LLOY.L", "VOD.L"],
+    "index":    ["^GSPC", "^IXIC", "^FTSE"],
+    "crypto":   ["BTC-USD", "ETH-USD"]
+  }
+}

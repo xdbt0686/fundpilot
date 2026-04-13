@@ -105,15 +105,8 @@ def can_call_ai(state: Dict[str, Any], current_ts: str, cooldown_minutes: int) -
 
 def notify_text(title: str, message: str) -> None:
     try:
-        from notifier import send_notification  # type: ignore
-        send_notification(title, message)
-        return
-    except Exception:
-        pass
-
-    try:
-        from notifier import notify  # type: ignore
-        notify(title, message)
+        from notifiers.console_notifier import notify_windows
+        notify_windows(title, message)
         return
     except Exception:
         pass

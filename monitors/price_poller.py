@@ -10,7 +10,14 @@ PRICE_CACHE_PATH = BASE_DIR / "data" / "price_cache.json"
 
 def load_watchlist() -> list[str]:
     with open(WATCHLIST_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    if isinstance(data, dict):
+        items = data.get("tickers") or data.get("watchlist") or []
+    elif isinstance(data, list):
+        items = data
+    else:
+        items = []
+    return [str(x).upper().strip() for x in items if str(x).strip()]
 
 
 def load_price_cache() -> dict:
