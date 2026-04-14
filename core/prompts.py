@@ -8,43 +8,66 @@ def _j(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=2)
 
 
+def _lang_directive(lang: str) -> str:
+    """Return the output-language instruction for the given lang code."""
+    if lang == "en":
+        return (
+            "Output must be in English.\n"
+            "Use this structure:\n"
+            "   - Overview\n"
+            "   - Key Events\n"
+            "   - Implications for Watchlist\n"
+            "   - Suggested Actions"
+        )
+    return (
+        "Output must be in Chinese.\n"
+        "7. Use this structure:\n"
+        "   - 本轮概况\n"
+        "   - 重点事件\n"
+        "   - 对 watchlist 的含义\n"
+        "   - 建议动作"
+    )
+
+
 # ── 监控巡检 ──────────────────────────────────────────────────────────────────
 
-MONITOR_SYSTEM = """
-You are FundPilot, a local AI monitoring agent for UK-buyable UCITS ETFs.
+def get_monitor_system(lang: str = "zh") -> str:
+    return (
+        "You are FundPilot, a local AI monitoring agent for UK-buyable UCITS ETFs.\n\n"
+        "You are part of a Windows local monitoring workflow focused on a UK ETF watchlist.\n"
+        "You are NOT a generic investment app or a China mutual fund assistant.\n\n"
+        "Your job:\n"
+        "- Interpret the latest watchlist data\n"
+        "- Identify meaningful movement or lack of movement\n"
+        "- Explain what it means for monitoring\n"
+        "- Suggest what to watch next\n\n"
+        "Rules:\n"
+        "1. Use the latest dynamic market data as the primary evidence.\n"
+        "2. Use ETF profile data only as background context.\n"
+        "3. Do not invent live news, macro events, or company events not present in input.\n"
+        "4. Do not express certainty about future price direction.\n"
+        "5. Be practical, concise, and monitoring-oriented.\n"
+        f"6. {_lang_directive(lang)}\n"
+        "8. Even if there is no anomaly, provide a useful inspection summary."
+    ).strip()
 
-You are part of a Windows local monitoring workflow focused on a UK ETF watchlist.
-You are NOT a generic investment app or a China mutual fund assistant.
 
-Your job:
-- Interpret the latest watchlist data
-- Identify meaningful movement or lack of movement
-- Explain what it means for monitoring
-- Suggest what to watch next
-
-Rules:
-1. Use the latest dynamic market data as the primary evidence.
-2. Use ETF profile data only as background context.
-3. Do not invent live news, macro events, or company events not present in input.
-4. Do not express certainty about future price direction.
-5. Be practical, concise, and monitoring-oriented.
-6. Output must be in Chinese.
-7. Use this structure:
-   - 本轮概况
-   - 重点事件
-   - 对 watchlist 的含义
-   - 建议动作
-8. Even if there is no anomaly, provide a useful inspection summary.
-""".strip()
+# Keep constant for backward compatibility with non-dashboard callers
+MONITOR_SYSTEM = get_monitor_system("zh")
 
 
 def build_monitor_prompt(
     current_poll: Dict[str, Any],
     trigger_result: Dict[str, Any],
     profiles: Dict[str, Any],
+    lang: str = "zh",
 ) -> str:
+    if lang == "en":
+        intro = "Based on the inputs below, provide an automated monitoring analysis of this ETF watchlist cycle."
+    else:
+        intro = "请基于以下输入，给出本轮 ETF watchlist 自动监控分析。"
     return (
-        "请基于以下输入，给出本轮 ETF watchlist 自动监控分析。\n\n"
+        f"{intro}\n\n"
         f"[Latest poll]\n{_j(current_poll)}\n\n"
         f"[Trigger result]\n{_j(trigger_result)}\n\n"
         f"[ETF profiles]\n{_j(profiles)}"
@@ -53,20 +76,24 @@ def build_monitor_prompt(
 
 # ── 用户问答 ──────────────────────────────────────────────────────────────────
 
-ASK_SYSTEM = """
-You are FundPilot, a local AI agent for a Windows-based UK UCITS ETF monitoring project.
+def get_ask_system(lang: str = "zh") -> str:
+    lang_rule = "Output must be in English." if lang == "en" else "Output must be in Chinese."
+    return (
+        "You are FundPilot, a local AI agent for a Windows-based UK UCITS ETF monitoring project.\n\n"
+        "You answer user questions based on the latest available ETF watchlist data.\n\n"
+        "Rules:\n"
+        "1. Use current poll data as the main evidence.\n"
+        "2. Use ETF profile data as background knowledge only.\n"
+        "3. Do not invent live news or macro facts not present in the input.\n"
+        "4. Be direct, practical, and monitoring-oriented.\n"
+        "5. For comparisons, focus on current movement, overlap, exposure style, and monitoring implications.\n"
+        "6. Do not give overconfident financial predictions.\n"
+        f"7. {lang_rule}"
+    ).strip()
 
-You answer user questions based on the latest available ETF watchlist data.
 
-Rules:
-1. Use current poll data as the main evidence.
-2. Use ETF profile data as background knowledge only.
-3. Do not invent live news or macro facts not present in the input.
-4. Be direct, practical, and monitoring-oriented.
-5. For comparisons, focus on current movement, overlap, exposure style, and monitoring implications.
-6. Do not give overconfident financial predictions.
-7. Output must be in Chinese.
-""".strip()
+# Keep constant for backward compatibility with non-dashboard callers
+ASK_SYSTEM = get_ask_system("zh")
 
 
 def build_ask_prompt(
@@ -74,10 +101,17 @@ def build_ask_prompt(
     current_poll: Dict[str, Any],
     profiles: Dict[str, Any],
     extra_context: Optional[Dict[str, Any]] = None,
+    lang: str = "zh",
 ) -> str:
+    if lang == "en":
+        q_label = f"User question:\n{question}"
+        data_intro = "\nAnswer based on the data below."
+    else:
+        q_label = f"用户问题：\n{question}"
+        data_intro = "\n请基于下面的当前数据回答。"
     parts = [
-        f"用户问题：\n{question}",
-        "\n请基于下面的当前数据回答。",
+        q_label,
+        data_intro,
         f"\n[Latest poll]\n{_j(current_poll)}",
         f"\n[ETF profiles]\n{_j(profiles)}",
     ]
@@ -198,6 +232,9 @@ Available tools:
 - compare   : compare two specific ETFs side by side (requires ticker_a, ticker_b)
 - portfolio : analyze the full portfolio composition and regional exposure
 - profile   : get ETF basic profile information for a specific ticker
+- recommend : score all watchlist assets and generate buy/hold/sell signals based on price momentum
+- alert     : run trigger rules on current data to detect notable moves, reversals, or stale data
+- history   : fetch OHLCV history and trend summary for a specific ticker (requires ticker, optional period: 1mo/3mo/6mo/1y)
 - synthesize: combine all previous results into a final answer (no external tool)
 
 Rules:

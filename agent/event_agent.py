@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 
 from tools.etf_profile import get_etf_profile
 from core.prompts import (
-    MONITOR_SYSTEM, build_monitor_prompt,
-    ASK_SYSTEM, build_ask_prompt,
+    get_monitor_system, build_monitor_prompt,
+    get_ask_system, build_ask_prompt,
 )
 
 try:
@@ -46,6 +46,7 @@ class EventAgent:
         current_poll: Dict[str, Any],
         trigger_result: Dict[str, Any],
         profiles: Optional[Dict[str, Any]] = None,
+        lang: str = "zh",
     ) -> Dict[str, Any]:
         data = (current_poll or {}).get("data", {}) or {}
         tickers = list(data.keys())
@@ -54,8 +55,8 @@ class EventAgent:
             profiles = _load_profiles_for_tickers(tickers)
 
         answer = _call_local_llm(
-            MONITOR_SYSTEM,
-            build_monitor_prompt(current_poll, trigger_result, profiles),
+            get_monitor_system(lang),
+            build_monitor_prompt(current_poll, trigger_result, profiles, lang=lang),
         )
 
         return {
@@ -71,6 +72,7 @@ class EventAgent:
         current_poll: Dict[str, Any],
         profiles: Optional[Dict[str, Any]] = None,
         extra_context: Optional[Dict[str, Any]] = None,
+        lang: str = "zh",
     ) -> Dict[str, Any]:
         data = (current_poll or {}).get("data", {}) or {}
         tickers = list(data.keys())
@@ -79,8 +81,8 @@ class EventAgent:
             profiles = _load_profiles_for_tickers(tickers)
 
         answer = _call_local_llm(
-            ASK_SYSTEM,
-            build_ask_prompt(user_question, current_poll, profiles, extra_context),
+            get_ask_system(lang),
+            build_ask_prompt(user_question, current_poll, profiles, extra_context, lang=lang),
         )
 
         return {

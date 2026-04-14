@@ -1,4 +1,4 @@
-# FundPilot 🛰️
+# FundPilot
 
 A local AI agent for monitoring ETFs, stocks, indices, and crypto — powered by a locally-running LLM (Ollama).
 
@@ -8,13 +8,17 @@ FundPilot fetches real-time market data, evaluates technical signals, generates 
 
 ## Features
 
-- **Multi-asset monitoring** — UK ETFs, US stocks, UK blue chips, global indices, crypto (30 assets out of the box)
+- **Multi-asset monitoring** — UK ETFs, US stocks, UK blue chips, global indices, crypto (29 assets out of the box)
 - **3-layer AI Agent** — Planner → Executor → Critic architecture for structured, self-checking analysis
 - **Technical scoring** — daily / weekly / monthly momentum, MA20 deviation, volume anomaly
 - **Buy/hold/sell recommendations** — AI-generated, based on quantitative signal scores
 - **ETF overlap analysis** — detects redundant holdings across the watchlist
 - **Portfolio composition report** — regional exposure, EM allocation, TER summary
-- **GUI Dashboard** — Tkinter-based real-time dashboard with alert panel
+- **GUI Dashboard** — Tkinter-based real-time dashboard with:
+  - Live price table with auto-refresh
+  - Alert panel with event severity detection
+  - **High-volatility popup warnings** — modal alert fires automatically when strong price moves are detected
+  - **Bilingual UI (中文 / English)** — toggle all labels, buttons, and AI responses between Chinese and English with one click
 - **Fully local** — runs on Ollama (qwen2.5:3b by default), no API keys required
 
 ---
@@ -24,7 +28,7 @@ FundPilot fetches real-time market data, evaluates technical signals, generates 
 ```
 fundpilot/
 ├── agent/
-│   ├── event_agent.py       # Core AI agent (monitor + Q&A)
+│   ├── event_agent.py       # Core AI agent (monitor + Q&A), supports lang param
 │   ├── planner.py           # Decomposes user questions into subtasks
 │   ├── executor.py          # Executes subtasks (tools + LLM interpretation)
 │   ├── critic.py            # Validates AI answers against raw data
@@ -32,7 +36,7 @@ fundpilot/
 │
 ├── core/
 │   ├── llm.py               # Ollama API client
-│   ├── prompts.py           # Centralized prompt constants & builders
+│   ├── prompts.py           # Prompt builders with bilingual (zh/en) support
 │   └── router.py            # Intent classifier & tool dispatcher
 │
 ├── providers/
@@ -59,7 +63,7 @@ fundpilot/
 │   └── etfs.json            # ETF static profile data
 │
 ├── main.py                  # Unified CLI entry point
-├── fundpilot_dashboard.py   # Tkinter GUI dashboard
+├── fundpilot_dashboard.py   # Tkinter GUI dashboard (bilingual, volatility alerts)
 ├── run_monitor_loop.py      # Continuous monitoring loop
 └── start_agent.bat          # Windows launcher (double-click to start)
 ```
@@ -109,7 +113,7 @@ set OLLAMA_MODEL=qwen2.5:3b
 python main.py recommend
 
 # 3-layer AI agent Q&A
-python main.py agent VUAG and CSP1 have diverged today?
+python main.py agent "VUAG and CSP1 have diverged today?"
 
 # ETF overlap analysis
 python main.py overlap
@@ -129,6 +133,27 @@ python main.py loop
 # GUI dashboard
 python main.py dashboard
 ```
+
+---
+
+## GUI Dashboard
+
+Launch with `python main.py dashboard` or via `start_agent.bat`.
+
+| Area | Description |
+|------|-------------|
+| Top-left | AI response output (Q&A and inspection results) |
+| Top-right | Question input, quick-question buttons, monitor controls |
+| Bottom-left | Alert panel — event list with severity tags |
+| Bottom-right | Live price table (ticker, latest, prev close, change %) |
+
+### Language Toggle
+
+Click the **EN** / **中文** button in the top-right corner to switch all UI labels, buttons, and AI-generated responses between Chinese and English. The language preference is passed directly to the LLM prompt so responses match the selected language.
+
+### Volatility Popup
+
+When the monitor detects a high-severity price event (e.g., a move exceeding `daily_move_strong_pct`), a modal warning dialog appears automatically. Each unique event triggers the popup only once per session to avoid repeated interruptions.
 
 ---
 
@@ -173,6 +198,8 @@ Create `data/monitor_settings.json` to override defaults:
   "stale_data_minutes": 20
 }
 ```
+
+`daily_move_strong_pct` is the threshold above which the dashboard will fire a volatility popup warning.
 
 ---
 
