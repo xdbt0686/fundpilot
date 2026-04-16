@@ -3,7 +3,8 @@ title FundPilot Launcher
 
 set "DIR=D:\LLM study\fundpilot"
 set "PY=%DIR%\.venv\Scripts\python.exe"
-set "MODEL=qwen2.5:7b"
+set "MODEL=qwen2.5:14b"
+set "OLLAMA_MODELS=D:\ollama\models"
 
 cd /d "%DIR%"
 if errorlevel 1 (
@@ -58,8 +59,9 @@ exit /b 1
 
 :FULL
 set OLLAMA_MODEL=%MODEL%
-start "Monitor" cmd /k "cd /d "%DIR%" && set OLLAMA_MODEL=%MODEL% && "%PY%" run_monitor_loop.py"
-start "Dashboard" cmd /k "cd /d "%DIR%" && set OLLAMA_MODEL=%MODEL% && "%PY%" web_main.py"
+set OLLAMA_MODELS=%OLLAMA_MODELS%
+start "Monitor" cmd /k "cd /d "%DIR%" && set OLLAMA_MODEL=%MODEL% && set OLLAMA_MODELS=%OLLAMA_MODELS% && "%PY%" run_monitor_loop.py"
+start "Dashboard" cmd /k "cd /d "%DIR%" && set OLLAMA_MODEL=%MODEL% && set OLLAMA_MODELS=%OLLAMA_MODELS% && "%PY%" web_main.py"
 echo Started. This window can be closed.
 pause
 exit /b 0
