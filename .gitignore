@@ -39,3 +39,8 @@ desktop.ini
 
 # Generated charts
 data/charts/
+
+# Intent classifier artefacts (generated locally, not checked in)
+data/intent_train.jsonl
+data/intent_test.jsonl
+data/intent_model/
