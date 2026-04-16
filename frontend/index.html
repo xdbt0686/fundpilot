@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FundPilot</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     /* ── Reset & base ───────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -153,142 +154,40 @@
     .btn-neutral  { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
     .btn-neutral:hover:not(:disabled) { color: var(--text); border-color: var(--accent); filter: none; }
 
-    /* ── Alert panel overrides ──────────────────────────────────────── */
-    #alert-panel { border-color: var(--border); }
-    #alert-panel.has-critical { border-color: rgba(248,81,73,.5); }
-    #alert-panel.has-warning  { border-color: rgba(210,153,34,.4); }
-
-    #alert-panel .panel-header { position: relative; }
-    #alert-panel.has-critical .panel-header { background: rgba(248,81,73,.08); }
-    #alert-panel.has-warning  .panel-header { background: rgba(210,153,34,.06); }
-
-    /* Count badge in header */
-    #alert-count-badge {
-      display: none; align-items: center; justify-content: center;
-      min-width: 20px; height: 18px; padding: 0 5px;
-      border-radius: 9px; font-size: 11px; font-weight: 700;
-      font-family: var(--font-ui);
+    /* ── Chart panel ────────────────────────────────────────────────── */
+    #chart-panel .panel-header { gap: 8px; }
+    #chart-ticker-label {
+      font-size: 13px; font-weight: 700; color: var(--text-heading);
+      font-family: var(--font-mono); min-width: 60px;
     }
-    #alert-count-badge.visible { display: inline-flex; }
-    #alert-count-badge.critical { background: var(--danger);  color: #fff; }
-    #alert-count-badge.warning  { background: var(--warning); color: #000; }
-    #alert-count-badge.info     { background: var(--info);    color: #fff; }
-
-    /* Pulsing dot for critical */
-    .pulse-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-      display: none;
+    #chart-period-btns { display: flex; gap: 4px; }
+    .btn-period {
+      padding: 3px 8px; font-size: 11px; font-weight: 600;
+      background: var(--surface3); color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+      transition: all 0.15s;
     }
-    .pulse-dot.active {
-      display: block;
-      background: var(--danger);
-      box-shadow: 0 0 0 0 rgba(248,81,73,.7);
-      animation: pulse-ring 1.4s ease-out infinite;
-    }
-    @keyframes pulse-ring {
-      0%   { box-shadow: 0 0 0 0 rgba(248,81,73,.7); }
-      70%  { box-shadow: 0 0 0 7px rgba(248,81,73,0); }
-      100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
-    }
+    .btn-period:hover  { border-color: var(--accent); color: var(--text); }
+    .btn-period.active { background: var(--accent-dk); color: #fff; border-color: var(--accent-dk); }
 
-    /* ── Alert list ─────────────────────────────────────────────────── */
-    #alert-list {
-      flex: 1; overflow-y: auto; padding: 8px 10px;
-      min-height: 0; display: flex; flex-direction: column; gap: 6px;
+    #chart-container {
+      flex: 1; width: 100%; min-height: 0;
+      position: relative;
     }
-
-    /* Alert card */
-    .alert-card {
-      display: flex; align-items: stretch;
-      border-radius: 6px; overflow: hidden;
-      border: 1px solid transparent;
-      transition: transform 0.15s, box-shadow 0.15s;
-      cursor: default;
-    }
-    .alert-card:hover {
-      transform: translateX(2px);
-      box-shadow: -3px 0 0 0 currentColor;
-    }
-
-    /* Severity left bar */
-    .alert-bar {
-      width: 3px; flex-shrink: 0;
-    }
-
-    /* Card body */
-    .alert-body {
-      flex: 1; display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px;
-    }
-
-    /* Severity icon */
-    .alert-icon {
-      font-size: 15px; flex-shrink: 0; line-height: 1;
-      width: 20px; text-align: center;
-    }
-
-    /* Text */
-    .alert-text { flex: 1; min-width: 0; }
-    .alert-ticker {
-      font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
-      font-family: var(--font-mono);
-    }
-    .alert-title {
-      font-size: 12px; line-height: 1.4; margin-top: 1px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-
-    /* Severity colour sets */
-    .sev-critical .alert-bar   { background: #f85149; }
-    .sev-critical .alert-body  { background: rgba(248,81,73,.08); border-left: none; }
-    .sev-critical              { border-color: rgba(248,81,73,.25); color: #f85149; }
-    .sev-critical .alert-title { color: #ffb3ae; }
-    .sev-critical .alert-ticker{ color: #ff6b6b; }
-    .sev-critical .alert-body  { animation: flash-critical 2.5s ease-in-out infinite; }
-    @keyframes flash-critical {
-      0%, 100% { background: rgba(248,81,73,.08); }
-      50%      { background: rgba(248,81,73,.15); }
-    }
-
-    .sev-high .alert-bar   { background: #ffa657; }
-    .sev-high .alert-body  { background: rgba(255,166,87,.07); }
-    .sev-high              { border-color: rgba(255,166,87,.2); color: #ffa657; }
-    .sev-high .alert-title { color: #d4a76a; }
-    .sev-high .alert-ticker{ color: #ffa657; }
-
-    .sev-warning .alert-bar   { background: #d29922; }
-    .sev-warning .alert-body  { background: rgba(210,153,34,.07); }
-    .sev-warning              { border-color: rgba(210,153,34,.2); color: #d29922; }
-    .sev-warning .alert-title { color: #b8963e; }
-    .sev-warning .alert-ticker{ color: #e3ac30; }
-
-    .sev-info .alert-bar   { background: #58a6ff; }
-    .sev-info .alert-body  { background: rgba(88,166,255,.06); }
-    .sev-info              { border-color: rgba(88,166,255,.18); color: #58a6ff; }
-    .sev-info .alert-title { color: var(--text-dim); }
-    .sev-info .alert-ticker{ color: #79b8ff; }
-
-    /* OK / empty state */
-    .alert-empty {
-      flex: 1; display: flex; flex-direction: column;
+    #chart-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 10px; color: var(--text-dim); padding: 12px;
+      gap: 8px; color: var(--text-dim); pointer-events: none;
     }
-    .alert-empty-icon { font-size: 32px; line-height: 1; }
-    .alert-empty-msg  { font-size: 13px; font-weight: 500; color: var(--success); }
-    .alert-empty-sub  { font-size: 11px; color: var(--text-dim); text-align: center; }
-
-    /* Market summary chips */
-    .mkt-chips {
-      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    #chart-placeholder .ph-icon { font-size: 32px; }
+    #chart-placeholder .ph-text { font-size: 12px; }
+    #chart-loading {
+      display: none; position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      background: rgba(13,17,23,.7); z-index: 5;
     }
-    .mkt-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 600;
-    }
-    .mkt-chip.up   { background: rgba(63,185,80,.15);  color: var(--success); }
-    .mkt-chip.down { background: rgba(248,81,73,.15);  color: var(--danger); }
-    .mkt-chip.flat { background: rgba(139,148,158,.12); color: var(--text-dim); }
+    #chart-loading.active { display: flex; }
 
     /* ── Data table ─────────────────────────────────────────────────── */
     #table-wrap { flex: 1; overflow: auto; min-height: 0; }
@@ -308,12 +207,18 @@
     #data-table td {
       padding: 8px 12px; text-align: right;
       border-bottom: 1px solid rgba(48,54,61,.5);
-      transition: background 0.1s;
+      transition: background 0.15s;
     }
     #data-table td:first-child { text-align: center; font-weight: 600; color: var(--text-heading); }
-    #data-table tr:hover td { background: var(--surface2); }
-    #data-table tr.selected td { background: rgba(56,139,253,.12); }
     #data-table tr { cursor: pointer; }
+    #data-table tr:hover td { filter: brightness(1.15); }
+    #data-table tr.selected td { outline: 1px solid rgba(56,139,253,.4); }
+
+    /* Row alert highlights */
+    #data-table tr.row-critical td { background: rgba(248,81,73,.13); }
+    #data-table tr.row-warning  td { background: rgba(210,153,34,.11); }
+    #data-table tr.row-info     td { background: rgba(88,166,255,.08); }
+    #data-table tr.row-up       td { background: rgba(63,185,80,.10); }
 
     .up   { color: var(--up); }
     .down { color: var(--down); }
@@ -323,9 +228,19 @@
       display: inline-block; padding: 1px 6px; border-radius: 3px;
       font-size: 12px; font-weight: 600;
     }
-    .change-chip.up   { background: rgba(63,185,80,.15); }
-    .change-chip.down { background: rgba(248,81,73,.15); }
+    .change-chip.up   { background: rgba(63,185,80,.18); }
+    .change-chip.down { background: rgba(248,81,73,.18); }
     .change-chip.flat { background: rgba(139,148,158,.1); }
+
+    /* Alert dot on ticker cell */
+    .alert-dot {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; margin-left: 5px; vertical-align: middle;
+    }
+    .alert-dot.critical { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
+    .alert-dot.warning  { background: var(--warning); }
+    .alert-dot.info     { background: var(--info); }
+    .alert-dot.up       { background: var(--success); }
 
     /* ── Status bar ─────────────────────────────────────────────────── */
     #statusbar {
@@ -334,27 +249,6 @@
       background: #010409; border-top: 1px solid var(--border);
       font-size: 11px; color: var(--text-dim); flex-shrink: 0;
     }
-
-    /* ── Chart modal ────────────────────────────────────────────────── */
-    #chart-modal {
-      display: none; position: fixed; inset: 0; z-index: 100;
-      background: rgba(1,4,9,.85); align-items: center; justify-content: center;
-    }
-    #chart-modal.open { display: flex; }
-    #chart-box {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; overflow: hidden; max-width: 90vw; max-height: 90vh;
-      display: flex; flex-direction: column;
-    }
-    #chart-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border);
-    }
-    #chart-title { font-weight: 600; color: var(--text-heading); }
-    #chart-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; }
-    #chart-close:hover { color: var(--text); }
-    #chart-img { display: block; max-width: 100%; max-height: 75vh; object-fit: contain; }
-    #chart-period-row { display: flex; gap: 6px; padding: 10px 16px; background: var(--surface2); border-top: 1px solid var(--border); }
 
     /* ── Lang toggle ───────────────────────────────────────────────── */
     #lang-btn {
@@ -366,7 +260,7 @@
 
     /* ── Spinner ───────────────────────────────────────────────────── */
     .spinner {
-      display: inline-block; width: 12px; height: 12px;
+      display: inline-block; width: 14px; height: 14px;
       border: 2px solid var(--border); border-top-color: var(--accent);
       border-radius: 50%; animation: spin 0.7s linear infinite;
     }
@@ -456,29 +350,37 @@
           <button class="btn btn-neutral" id="btn-q2"     data-i18n="btn_q2">差异对比</button>
         </div>
 
-        <!-- Row 3: chart + recommend -->
+        <!-- Row 3: recommend -->
         <div class="btn-row">
-          <button class="btn btn-neutral"  id="btn-chart"     data-i18n="btn_chart">K线图</button>
-          <button class="btn btn-primary"  id="btn-recommend" data-i18n="btn_recommend">智能评分</button>
+          <button class="btn btn-primary" id="btn-recommend" data-i18n="btn_recommend">智能评分</button>
         </div>
 
       </div>
     </div>
 
-    <!-- Left-bottom: Alerts -->
-    <div class="panel" id="alert-panel">
+    <!-- Left-bottom: Interactive K-line chart -->
+    <div class="panel" id="chart-panel">
       <div class="panel-header">
-        <div class="panel-meta" style="gap:8px">
-          <div class="pulse-dot" id="alert-pulse"></div>
-          <span class="panel-title" data-i18n="frame_alerts">告警事项</span>
+        <div class="panel-meta" style="gap:10px">
+          <span class="panel-title" data-i18n="frame_chart">K 线图</span>
+          <span id="chart-ticker-label">--</span>
         </div>
-        <div class="panel-meta" style="gap:8px">
-          <span id="alert-meta" data-i18n="alert_pending">待分析…</span>
-          <span id="alert-count-badge"></span>
+        <div id="chart-period-btns">
+          <button class="btn-period" data-period="1mo">1M</button>
+          <button class="btn-period active" data-period="3mo">3M</button>
+          <button class="btn-period" data-period="6mo">6M</button>
+          <button class="btn-period" data-period="1y">1Y</button>
+          <button class="btn-period" data-period="2y">2Y</button>
         </div>
       </div>
-      <div class="panel-body">
-        <div id="alert-list"></div>
+      <div class="panel-body" style="position:relative;">
+        <div id="chart-container">
+          <div id="chart-placeholder">
+            <div class="ph-icon">📈</div>
+            <div class="ph-text" data-i18n="chart_hint">点击右侧表格中任意一行加载 K 线图</div>
+          </div>
+          <div id="chart-loading"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
 
@@ -498,7 +400,6 @@
                 <th data-i18n="col_prev">前收盘</th>
                 <th data-i18n="col_change">涨跌幅</th>
                 <th data-i18n="col_time">时间</th>
-                <th></th>
               </tr>
             </thead>
             <tbody id="table-body"></tbody>
@@ -517,31 +418,13 @@
 
 </div><!-- #app -->
 
-<!-- ── Chart modal ─────────────────────────────────────────────────── -->
-<div id="chart-modal">
-  <div id="chart-box">
-    <div id="chart-header">
-      <span id="chart-title">Chart</span>
-      <button id="chart-close">✕</button>
-    </div>
-    <img id="chart-img" src="" alt="K-Line Chart" />
-    <div id="chart-period-row">
-      <button class="btn btn-neutral btn-period" data-period="1mo">1M</button>
-      <button class="btn btn-neutral btn-period" data-period="3mo">3M</button>
-      <button class="btn btn-neutral btn-period" data-period="6mo">6M</button>
-      <button class="btn btn-neutral btn-period" data-period="1y">1Y</button>
-      <button class="btn btn-neutral btn-period" data-period="2y">2Y</button>
-    </div>
-  </div>
-</div>
-
 <script>
 /* ── i18n ─────────────────────────────────────────────────────────────── */
 const STRINGS = {
   zh: {
     brand_sub: "AI 基金监控",
     frame_ai: "AI 分析", frame_control: "提问 / 控制",
-    frame_alerts: "告警事项", frame_data: "实时数据",
+    frame_chart: "K 线图", frame_data: "实时数据",
     ai_status_ready: "就绪",
     ai_initial: "FundPilot 已就绪。\n\n这里会显示主动问答结果，或手动巡检分析。",
     monitor_label: "监控", refresh_label: "刷新",
@@ -553,23 +436,20 @@ const STRINGS = {
     btn_ask: "提问", btn_inspect: "巡检", btn_refresh: "刷新",
     btn_start: "启动监控", btn_stop: "停止",
     btn_q1: "谁最值得盯", btn_q2: "差异对比",
-    btn_chart: "K线图", btn_recommend: "智能评分",
-    alert_pending: "待分析…", snapshot_none: "暂无快照",
-    no_alerts: "当前无告警",
-    market_summary: "市场：涨 {up} / 跌 {down} / 平 {flat}",
-    alert_count: "{n} 条告警",
+    btn_recommend: "智能评分",
+    snapshot_none: "暂无快照",
     snapshot_label: "快照：{t}",
     col_ticker: "代码", col_latest: "最新价", col_prev: "前收盘",
     col_change: "涨跌幅", col_time: "时间",
+    chart_hint: "点击右侧表格中任意一行加载 K 线图",
+    chart_loading: "加载中…",
+    chart_done: "图表已加载", chart_fail: "图表加载失败",
     asking: "正在调用 AI，请稍候…",
     ask_done: "问答完成", ask_fail: "问答失败",
     inspecting: "正在巡检，请稍候…",
     inspect_done: "巡检完成", inspect_fail: "巡检失败",
     recommending: "正在生成评分，请稍候…",
     recommend_done: "评分完成", recommend_fail: "评分失败",
-    chart_generating: "正在生成图表…",
-    chart_done: "图表已生成", chart_fail: "图表生成失败",
-    chart_no_select: "请先在数据表中选中一行",
     monitor_already: "监控进程已在运行",
     start_ok: "监控已启动", stop_ok: "监控已停止",
     q1_text: "现在谁最值得重点盯？",
@@ -577,13 +457,12 @@ const STRINGS = {
     statusbar_ready: "就绪",
     lang_btn: "EN",
     ratings_header: "── 评分排行 ──────────────────────────────",
-    ratings_score: "分",
-    ratings_daily: "日",
+    ratings_score: "分", ratings_daily: "日",
   },
   en: {
     brand_sub: "AI Fund Monitor",
     frame_ai: "AI Analysis", frame_control: "Ask / Control",
-    frame_alerts: "Alerts", frame_data: "Live Data",
+    frame_chart: "K-Line Chart", frame_data: "Live Data",
     ai_status_ready: "Ready",
     ai_initial: "FundPilot is ready.\n\nAI responses and inspection results will appear here.",
     monitor_label: "Monitor", refresh_label: "Refreshed",
@@ -595,23 +474,20 @@ const STRINGS = {
     btn_ask: "Ask", btn_inspect: "Inspect", btn_refresh: "Refresh",
     btn_start: "Start Monitor", btn_stop: "Stop",
     btn_q1: "Who to Watch", btn_q2: "Compare ETFs",
-    btn_chart: "K-Line", btn_recommend: "Recommend",
-    alert_pending: "Pending…", snapshot_none: "No snapshot",
-    no_alerts: "No active alerts",
-    market_summary: "Market: {up} up / {down} down / {flat} flat",
-    alert_count: "{n} alerts",
+    btn_recommend: "Recommend",
+    snapshot_none: "No snapshot",
     snapshot_label: "Snapshot: {t}",
     col_ticker: "Ticker", col_latest: "Latest", col_prev: "Prev Close",
     col_change: "Change %", col_time: "Time",
+    chart_hint: "Click any row in the table to load chart",
+    chart_loading: "Loading…",
+    chart_done: "Chart loaded", chart_fail: "Chart failed",
     asking: "Calling AI, please wait…",
     ask_done: "Ask complete", ask_fail: "Ask failed",
     inspecting: "Inspecting, please wait…",
     inspect_done: "Inspection complete", inspect_fail: "Inspection failed",
     recommending: "Generating recommendations…",
     recommend_done: "Recommend complete", recommend_fail: "Recommend failed",
-    chart_generating: "Generating chart…",
-    chart_done: "Chart generated", chart_fail: "Chart failed",
-    chart_no_select: "Please select a row in the table first",
     monitor_already: "Monitor is already running",
     start_ok: "Monitor started", stop_ok: "Monitor stopped",
     q1_text: "Which asset deserves the most attention right now?",
@@ -619,8 +495,7 @@ const STRINGS = {
     statusbar_ready: "Ready",
     lang_btn: "中文",
     ratings_header: "── Signal Rankings ───────────────────────",
-    ratings_score: "Score",
-    ratings_daily: "Daily",
+    ratings_score: "Score", ratings_daily: "Daily",
   }
 };
 
@@ -632,14 +507,11 @@ function t(key, vars = {}) {
 }
 function applyLang() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
-    const key = el.getAttribute("data-i18n");
-    el.textContent = t(key);
+    el.textContent = t(el.getAttribute("data-i18n"));
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
-    const key = el.getAttribute("data-i18n-placeholder");
-    el.placeholder = t(key);
+    el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
   });
-  // Initial AI text on first load
   if (!_aiHasContent) {
     document.getElementById("ai-output").textContent = t("ai_initial");
   }
@@ -647,29 +519,105 @@ function applyLang() {
 }
 
 /* ── State ─────────────────────────────────────────────────────────────── */
-let _aiHasContent = false;
-let selectedTicker = null;
+let _aiHasContent    = false;
+let selectedTicker   = null;
+let currentPeriod    = "3mo";
 let lastMonitorState = { running: false, pid: null, status: "not_started" };
-let _busy = false;
+let _busy            = false;
+
+// Alert state: { TICKER: 'critical'|'warning'|'info'|'up' }
+let alertsByTicker = {};
 
 /* ── DOM refs ──────────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
-const aiOutput       = $("ai-output");
-const aiDot          = $("ai-dot");
-const aiStatus       = $("ai-status");
-const alertList      = $("alert-list");
-const alertMeta      = $("alert-meta");
-const tableBody      = $("table-body");
-const snapshotMeta   = $("snapshot-meta");
-const monitorDot     = $("monitor-dot");
-const monitorText    = $("monitor-status-text");
-const monitorCtrl    = $("monitor-status-ctrl");
-const refreshTime    = $("refresh-time");
-const statusMsg      = $("status-msg");
-const questionInput  = $("question-input");
-const chartModal     = $("chart-modal");
-const chartImg       = $("chart-img");
-const chartTitle     = $("chart-title");
+const aiOutput      = $("ai-output");
+const aiDot         = $("ai-dot");
+const aiStatus      = $("ai-status");
+const tableBody     = $("table-body");
+const snapshotMeta  = $("snapshot-meta");
+const monitorDot    = $("monitor-dot");
+const monitorText   = $("monitor-status-text");
+const monitorCtrl   = $("monitor-status-ctrl");
+const refreshTime   = $("refresh-time");
+const statusMsg     = $("status-msg");
+const questionInput = $("question-input");
+
+/* ── TradingView chart ─────────────────────────────────────────────────── */
+let _chart       = null;
+let _candleSerie = null;
+let _volSerie    = null;
+
+function initChart() {
+  const container = $("chart-container");
+  if (_chart) { _chart.remove(); _chart = null; }
+
+  _chart = LightweightCharts.createChart(container, {
+    layout: {
+      background: { type: "solid", color: "#161b22" },
+      textColor:  "#8b949e",
+    },
+    grid: {
+      vertLines: { color: "#21262d" },
+      horzLines: { color: "#21262d" },
+    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: "#30363d" },
+    timeScale: {
+      borderColor: "#30363d",
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    width:  container.clientWidth,
+    height: container.clientHeight,
+  });
+
+  _candleSerie = _chart.addCandlestickSeries({
+    upColor:        "#3fb950",
+    downColor:      "#f85149",
+    borderUpColor:  "#3fb950",
+    borderDownColor:"#f85149",
+    wickUpColor:    "#3fb950",
+    wickDownColor:  "#f85149",
+  });
+
+  // Resize when panel resizes
+  new ResizeObserver(() => {
+    if (_chart) {
+      _chart.applyOptions({
+        width:  container.clientWidth,
+        height: container.clientHeight,
+      });
+    }
+  }).observe(container);
+}
+
+async function loadInlineChart(ticker, period) {
+  if (!ticker) return;
+  period = period || currentPeriod;
+
+  $("chart-ticker-label").textContent = `${ticker}  ${period.toUpperCase()}`;
+  $("chart-placeholder").style.display = "none";
+  $("chart-loading").classList.add("active");
+  setStatus(t("chart_loading"));
+
+  try {
+    const res  = await fetch(`/api/history/${ticker}?period=${period}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "error");
+    const bars = data.bars || [];
+    if (!bars.length) throw new Error("no data");
+
+    if (!_chart) initChart();
+    _candleSerie.setData(bars);
+    _chart.timeScale().fitContent();
+    setStatus(`${t("chart_done")}: ${ticker} ${period}`);
+  } catch (e) {
+    $("chart-placeholder").style.display = "flex";
+    setStatus(`${t("chart_fail")}: ${e.message}`);
+  } finally {
+    $("chart-loading").classList.remove("active");
+  }
+}
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 function setStatus(msg) { statusMsg.textContent = msg; }
@@ -683,7 +631,7 @@ function setAi(text, statusKey, dotClass = "done") {
 
 function setBusy(busy) {
   _busy = busy;
-  ["btn-ask","btn-inspect","btn-refresh","btn-recommend","btn-chart","btn-q1","btn-q2"].forEach(id => {
+  ["btn-ask","btn-inspect","btn-refresh","btn-recommend","btn-q1","btn-q2"].forEach(id => {
     const el = $(id);
     if (el) el.disabled = busy;
   });
@@ -696,8 +644,7 @@ function fmtPrice(v) {
 function fmtChange(v) {
   const n = parseFloat(v);
   if (isNaN(n)) return String(v);
-  const sign = n >= 0 ? "+" : "";
-  return `${sign}${n.toFixed(2)}%`;
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 }
 function changeClass(v) {
   const n = parseFloat(v);
@@ -710,12 +657,10 @@ function updateMonitorUI(state) {
   const txt = state.running
     ? t("monitor_running", { pid: state.pid })
     : state.status === "not_started" ? t("monitor_not_started")
-    : state.status === "stopped" ? t("monitor_stopped")
+    : state.status === "stopped"     ? t("monitor_stopped")
     : t("monitor_exited");
-
   monitorText.textContent = txt;
   monitorCtrl.textContent = txt;
-
   monitorDot.className = "dot" + (state.running ? " running" : "");
 }
 
@@ -726,131 +671,101 @@ function tickClock() {
 }
 tickClock();
 
+/* ── Apply row alert highlights ────────────────────────────────────────── */
+function applyRowHighlights() {
+  tableBody.querySelectorAll("tr[data-ticker]").forEach(tr => {
+    const ticker = tr.dataset.ticker;
+    const alert  = alertsByTicker[ticker];
+    tr.className = [
+      selectedTicker === ticker ? "selected" : "",
+      alert === "critical" ? "row-critical" :
+      alert === "warning"  ? "row-warning"  :
+      alert === "info"     ? "row-info"      :
+      alert === "up"       ? "row-up"        : "",
+    ].filter(Boolean).join(" ");
+  });
+}
+
 /* ── Data table render ─────────────────────────────────────────────────── */
 function renderTable(snapshot) {
   if (!snapshot || !snapshot.data) return;
   const polledAt = snapshot.polled_at || "--";
   snapshotMeta.textContent = t("snapshot_label", { t: polledAt });
-  refreshTime.textContent = polledAt;
+  refreshTime.textContent  = polledAt;
 
   const rows = Object.entries(snapshot.data).map(([ticker, item]) => ({
     ticker,
-    latest:  item.latest_price,
-    prev:    item.previous_close,
-    change:  item.daily_change_pct,
-    ts:      item.timestamp || "--",
-    cls:     changeClass(item.daily_change_pct),
+    latest: item.latest_price,
+    prev:   item.previous_close,
+    change: item.daily_change_pct,
+    ts:     item.timestamp || "--",
+    cls:    changeClass(item.daily_change_pct),
   })).sort((a, b) => a.ticker.localeCompare(b.ticker));
 
-  tableBody.innerHTML = rows.map(r => `
-    <tr data-ticker="${r.ticker}" class="${selectedTicker === r.ticker ? 'selected' : ''}">
-      <td>${r.ticker}</td>
+  tableBody.innerHTML = rows.map(r => {
+    const alert = alertsByTicker[r.ticker];
+    const dot   = alert ? `<span class="alert-dot ${alert}"></span>` : "";
+    const rowCls = [
+      selectedTicker === r.ticker ? "selected" : "",
+      alert === "critical" ? "row-critical" :
+      alert === "warning"  ? "row-warning"  :
+      alert === "info"     ? "row-info"      :
+      alert === "up"       ? "row-up"        : "",
+    ].filter(Boolean).join(" ");
+    return `
+    <tr data-ticker="${r.ticker}" class="${rowCls}">
+      <td>${r.ticker}${dot}</td>
       <td class="${r.cls}">${fmtPrice(r.latest)}</td>
       <td class="flat">${fmtPrice(r.prev)}</td>
       <td><span class="change-chip ${r.cls}">${fmtChange(r.change)}</span></td>
       <td class="flat" style="font-size:11px">${r.ts}</td>
-      <td><button class="btn btn-neutral" style="padding:3px 8px;font-size:11px" onclick="openChart('${r.ticker}')">📈</button></td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   tableBody.querySelectorAll("tr").forEach(tr => {
     tr.addEventListener("click", () => {
       const ticker = tr.dataset.ticker;
       selectedTicker = ticker;
-      tableBody.querySelectorAll("tr").forEach(r => r.classList.toggle("selected", r.dataset.ticker === ticker));
+      applyRowHighlights();
+      loadInlineChart(ticker, currentPeriod);
     });
-    tr.addEventListener("dblclick", () => openChart(tr.dataset.ticker));
   });
 }
 
-/* ── Alerts render ─────────────────────────────────────────────────────── */
-function renderAlerts(alertData) {
-  const events  = alertData.events || [];
-  const summary = alertData.market_summary || {};
-  const panel   = $("alert-panel");
-  const pulse   = $("alert-pulse");
-  const badge   = $("alert-count-badge");
+/* ── Fetch & apply alerts ──────────────────────────────────────────────── */
+async function fetchAlerts() {
+  try {
+    const res  = await fetch("/api/alerts");
+    if (!res.ok) return;
+    const data = await res.json();
+    const events = data.events || [];
 
-  // severity helpers
-  const sevClass = sev => {
-    const s = (sev || "").toLowerCase();
-    return ["critical","danger","strong"].includes(s) ? "sev-critical"
-         : s === "high"    ? "sev-high"
-         : s === "warning" ? "sev-warning"
-         : "sev-info";
-  };
-  const sevIcon = sev => {
-    const s = (sev || "").toLowerCase();
-    return ["critical","danger","strong"].includes(s) ? "🔴"
-         : s === "high"    ? "🟠"
-         : s === "warning" ? "🟡"
-         : "🔵";
-  };
+    // Reset and rebuild alertsByTicker
+    alertsByTicker = {};
+    const sevOrder = { critical:0, danger:0, strong:0, high:1, warning:2, info:3 };
+    for (const ev of events) {
+      const ticker = ev.ticker;
+      if (!ticker || ticker === "WATCHLIST") continue;
+      const sev = (ev.severity || "info").toLowerCase();
+      const normalized =
+        ["critical","danger","strong"].includes(sev) ? "critical" :
+        sev === "high"    ? "warning" :
+        sev === "warning" ? "warning" : "info";
+      // Keep highest severity
+      const existing = alertsByTicker[ticker];
+      if (!existing || sevOrder[normalized] < sevOrder[existing]) {
+        alertsByTicker[ticker] = normalized;
+      }
+    }
 
-  // ── Empty / all-clear state ──
-  if (!events.length) {
-    panel.className = "panel";
-    pulse.classList.remove("active");
-    badge.classList.remove("visible");
-    alertMeta.textContent = t("no_alerts");
-    alertMeta.style.color = "var(--success)";
+    // Also mark strong upward movers that have no explicit alert
+    // (handled via table data — done in renderTable via changeClass)
 
-    const chips = summary.up_count !== undefined ? `
-      <div class="mkt-chips">
-        <span class="mkt-chip up">▲ ${summary.up_count}</span>
-        <span class="mkt-chip down">▼ ${summary.down_count}</span>
-        <span class="mkt-chip flat">— ${summary.flat_count}</span>
-      </div>` : "";
-
-    alertList.innerHTML = `
-      <div class="alert-empty">
-        <div class="alert-empty-icon">✅</div>
-        <div class="alert-empty-msg">${t("no_alerts")}</div>
-        ${chips}
-      </div>`;
-    return;
-  }
-
-  // ── Determine highest severity ──
-  const hasCritical = events.some(e => ["critical","danger","strong"].includes((e.severity||"").toLowerCase()));
-  const hasHigh     = events.some(e => (e.severity||"").toLowerCase() === "high");
-  const hasWarning  = events.some(e => (e.severity||"").toLowerCase() === "warning");
-
-  panel.className = "panel" + (hasCritical ? " has-critical" : hasWarning || hasHigh ? " has-warning" : "");
-  pulse.classList.toggle("active", hasCritical);
-
-  badge.textContent = events.length;
-  badge.className   = "alert-count-badge visible " + (hasCritical ? "critical" : hasHigh ? "warning" : "info");
-
-  alertMeta.textContent = t("alert_count", { n: events.length });
-  alertMeta.style.color = hasCritical ? "var(--danger)" : hasWarning || hasHigh ? "var(--warning)" : "var(--info)";
-
-  // Sort: critical first
-  const order = { critical:0, danger:0, strong:0, high:1, warning:2, info:3 };
-  const sorted = [...events].sort((a,b) =>
-    (order[(a.severity||"info").toLowerCase()] ?? 3) -
-    (order[(b.severity||"info").toLowerCase()] ?? 3)
-  );
-
-  alertList.innerHTML = sorted.map(ev => {
-    const sc     = sevClass(ev.severity);
-    const icon   = sevIcon(ev.severity);
-    const ticker = ev.ticker || "WATCHLIST";
-    const title  = ev.title  || "";
-    return `
-      <div class="alert-card ${sc}">
-        <div class="alert-bar"></div>
-        <div class="alert-body">
-          <span class="alert-icon">${icon}</span>
-          <div class="alert-text">
-            <div class="alert-ticker">${ticker}</div>
-            <div class="alert-title">${title}</div>
-          </div>
-        </div>
-      </div>`;
-  }).join("");
+    applyRowHighlights();
+  } catch {}
 }
 
-/* ── WebSocket for live data ───────────────────────────────────────────── */
+/* ── WebSocket ─────────────────────────────────────────────────────────── */
 function connectWS() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = e => {
@@ -865,30 +780,21 @@ function connectWS() {
   ws.onclose = () => setTimeout(connectWS, 3000);
 }
 connectWS();
-
-/* ── Fetch alerts on load and poll ────────────────────────────────────── */
-async function fetchAlerts() {
-  try {
-    const res = await fetch("/api/alerts");
-    if (res.ok) renderAlerts(await res.json());
-  } catch {}
-}
 fetchAlerts();
 setInterval(fetchAlerts, 10000);
 
-/* ── Actions ───────────────────────────────────────────────────────────── */
+/* ── AI actions ────────────────────────────────────────────────────────── */
 async function askAI() {
   const q = questionInput.value.trim();
-  if (!q) { setStatus(t("chart_no_select")); return; }
+  if (!q) return;
   setBusy(true);
   aiDot.className = "ai-dot busy";
   aiStatus.textContent = t("asking");
   aiOutput.textContent = t("asking");
   setStatus(t("asking"));
   try {
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res  = await fetch("/api/ask", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: q, lang }),
     });
     const data = await res.json();
@@ -909,16 +815,15 @@ async function inspectAI() {
   aiOutput.textContent = t("inspecting");
   setStatus(t("inspecting"));
   try {
-    const res = await fetch("/api/inspect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res  = await fetch("/api/inspect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lang }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "error");
     setAi(data.ai_text, "inspect_done", "done");
     if (data.snapshot) renderTable(data.snapshot);
-    if (data.alerts) renderAlerts(data.alerts);
+    if (data.alerts)   { /* alerts already fetched via polling */ }
     setStatus(t("inspect_done"));
   } catch (e) {
     setAi(`${t("inspect_fail")}: ${e.message}`, "inspect_fail", "error");
@@ -933,22 +838,22 @@ async function recommendAI() {
   aiOutput.textContent = t("recommending");
   setStatus(t("recommending"));
   try {
-    const res = await fetch("/api/recommend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res  = await fetch("/api/recommend", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lang }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "error");
 
-    // Build output: ratings table + AI text
     let out = "";
     if (data.ratings) {
-      const sorted = Object.entries(data.ratings).sort((a, b) => b[1].score - a[1].score);
+      const sorted = Object.entries(data.ratings).sort((a,b) => b[1].score - a[1].score);
       out += t("ratings_header") + "\n";
       for (const [ticker, r] of sorted) {
         const snap = r.price_snapshot || {};
-        const d = snap.daily_change_pct != null ? `${snap.daily_change_pct >= 0 ? "+" : ""}${(+snap.daily_change_pct).toFixed(2)}%` : "--";
+        const d = snap.daily_change_pct != null
+          ? `${snap.daily_change_pct >= 0 ? "+" : ""}${(+snap.daily_change_pct).toFixed(2)}%`
+          : "--";
         out += `  ${ticker.padEnd(8)} ${r.signal_label.padEnd(12)} ${t("ratings_score")}: ${String(r.score).padStart(3)}   ${t("ratings_daily")}: ${d}\n`;
       }
       out += "\n";
@@ -963,35 +868,9 @@ async function recommendAI() {
   } finally { setBusy(false); }
 }
 
-async function openChart(ticker) {
-  if (!ticker) {
-    if (!selectedTicker) { setStatus(t("chart_no_select")); return; }
-    ticker = selectedTicker;
-  }
-  const period = document.querySelector(".btn-period.active")?.dataset.period || "3mo";
-  chartTitle.textContent = `${ticker}  ${period}`;
-  chartImg.src = "";
-  chartModal.classList.add("open");
-  setStatus(t("chart_generating"));
-  try {
-    const res = await fetch("/api/chart", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker, period }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || "failed");
-    chartImg.src = `data:image/png;base64,${data.image_b64}`;
-    setStatus(t("chart_done"));
-  } catch (e) {
-    chartImg.alt = `${t("chart_fail")}: ${e.message}`;
-    setStatus(t("chart_fail"));
-  }
-}
-
 async function startMonitor() {
   try {
-    const res = await fetch("/api/monitor/start", { method: "POST" });
+    const res  = await fetch("/api/monitor/start", { method: "POST" });
     const data = await res.json();
     updateMonitorUI(data);
     setStatus(data.ok ? t("start_ok") : t("monitor_already"));
@@ -1000,7 +879,7 @@ async function startMonitor() {
 
 async function stopMonitor() {
   try {
-    const res = await fetch("/api/monitor/stop", { method: "POST" });
+    const res  = await fetch("/api/monitor/stop", { method: "POST" });
     const data = await res.json();
     if (data.ok) updateMonitorUI({ running: false, pid: null, status: "stopped" });
     setStatus(t("stop_ok"));
@@ -1009,15 +888,24 @@ async function stopMonitor() {
 
 async function refreshData() {
   try {
-    const [snap, alerts] = await Promise.all([
+    const [snap] = await Promise.all([
       fetch("/api/snapshot").then(r => r.json()),
-      fetch("/api/alerts").then(r => r.json()),
     ]);
     renderTable(snap);
-    renderAlerts(alerts);
+    await fetchAlerts();
     setStatus(`Refreshed at ${new Date().toLocaleTimeString()}`);
   } catch (e) { setStatus(String(e)); }
 }
+
+/* ── Period buttons ────────────────────────────────────────────────────── */
+document.querySelectorAll(".btn-period").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".btn-period").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentPeriod = btn.dataset.period;
+    if (selectedTicker) loadInlineChart(selectedTicker, currentPeriod);
+  });
+});
 
 /* ── Event wiring ──────────────────────────────────────────────────────── */
 $("btn-ask").addEventListener("click", askAI);
@@ -1026,27 +914,10 @@ $("btn-refresh").addEventListener("click", refreshData);
 $("btn-start").addEventListener("click", startMonitor);
 $("btn-stop").addEventListener("click", stopMonitor);
 $("btn-recommend").addEventListener("click", recommendAI);
-$("btn-chart").addEventListener("click", () => openChart(selectedTicker));
-$("btn-q1").addEventListener("click", () => {
-  questionInput.value = t("q1_text"); askAI();
-});
-$("btn-q2").addEventListener("click", () => {
-  questionInput.value = t("q2_text"); askAI();
-});
-
+$("btn-q1").addEventListener("click", () => { questionInput.value = t("q1_text"); askAI(); });
+$("btn-q2").addEventListener("click", () => { questionInput.value = t("q2_text"); askAI(); });
 questionInput.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); askAI(); }
-});
-
-// Chart modal
-$("chart-close").addEventListener("click", () => chartModal.classList.remove("open"));
-chartModal.addEventListener("click", e => { if (e.target === chartModal) chartModal.classList.remove("open"); });
-document.querySelectorAll(".btn-period").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".btn-period").forEach(b => b.classList.remove("active", "btn-accent"));
-    btn.classList.add("active", "btn-accent");
-    if (selectedTicker) openChart(selectedTicker);
-  });
 });
 
 // Language toggle
@@ -1056,7 +927,9 @@ $("lang-btn").addEventListener("click", () => {
   applyLang();
 });
 
-// Initial render
+// Init chart on load
+window.addEventListener("load", () => { initChart(); });
+
 applyLang();
 </script>
 </body>

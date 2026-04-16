@@ -261,6 +261,40 @@ async def recommend_ai(req: RecommendRequest):
         raise HTTPException(500, str(e))
 
 
+@app.get("/api/history/{ticker}")
+async def get_history(ticker: str, period: str = "3mo"):
+    """Return OHLCV bars for TradingView Lightweight Charts."""
+    try:
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+
+        def _fetch():
+            t = yf.Ticker(ticker.upper())
+            hist = t.history(period=period)
+            if hist.empty:
+                return []
+            bars = []
+            for date, row in hist.iterrows():
+                try:
+                    vol = int(row["Volume"])
+                except Exception:
+                    vol = 0
+                bars.append({
+                    "time":   date.strftime("%Y-%m-%d"),
+                    "open":   round(float(row["Open"]),  4),
+                    "high":   round(float(row["High"]),  4),
+                    "low":    round(float(row["Low"]),   4),
+                    "close":  round(float(row["Close"]), 4),
+                    "volume": vol,
+                })
+            return bars
+
+        bars = await loop.run_in_executor(None, _fetch)
+        return {"ticker": ticker.upper(), "period": period, "bars": bars}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
 @app.post("/api/chart")
 async def generate_chart(req: ChartRequest):
     try:

@@ -11,7 +11,9 @@ def _j(obj: Any) -> str:
 _NO_META = (
     "IMPORTANT: Do NOT describe, explain, or summarize the structure of the input data. "
     "Do NOT analyze the JSON format. Do NOT add any meta-commentary about the data. "
-    "Only output the answer directly."
+    "Only output the answer directly. "
+    "Do NOT use LaTeX math notation (no \\[, \\], \\frac, \\text, $$ etc.). "
+    "Write all numbers and formulas as plain text."
 )
 
 
