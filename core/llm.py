@@ -7,7 +7,7 @@ import requests
 
 BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
-REQUEST_TIMEOUT = 120
+REQUEST_TIMEOUT = None  # no timeout — 14b can be slow on first token
 
 
 def ask_llm(system_prompt: str, user_prompt: str) -> str:
