@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FundPilot</title>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface2:     #21262d;
+      --surface3:     #2d333b;
+      --border:       #30363d;
+      --accent:       #388bfd;
+      --accent-dk:    #1f6feb;
+      --success:      #3fb950;
+      --warning:      #d29922;
+      --danger:       #f85149;
+      --info:         #58a6ff;
+      --text:         #e6edf3;
+      --text-dim:     #8b949e;
+      --text-heading: #c9d1d9;
+      --up:           #3fb950;
+      --down:         #f85149;
+      --flat:         #8b949e;
+      --radius:       6px;
+      --font-mono:    "Cascadia Code", "Fira Code", "Consolas", monospace;
+      --font-ui:      "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: var(--font-ui); font-size: 14px; overflow: hidden;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface2); }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+    /* ── Layout ─────────────────────────────────────────────────────── */
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* Header */
+    #header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 52px; min-height: 52px;
+      background: #010409; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #brand { display: flex; align-items: baseline; gap: 10px; }
+    #brand-name { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; }
+    #brand-sub  { font-size: 11px; color: var(--text-dim); }
+    #header-right { display: flex; align-items: center; gap: 14px; }
+    #monitor-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-dim);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-dim); flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .dot.running  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.stopped  { background: var(--warning); }
+    .dot.error    { background: var(--danger); }
+
+    /* Grid */
+    #grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 3fr 2fr;
+      gap: 8px; padding: 8px; flex: 1; overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Panel */
+    .panel {
+      display: flex; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; min-height: 0;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; background: var(--surface2);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .panel-title { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-meta  { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+    .panel-body  { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+    /* Status dot inside panel */
+    .ai-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); transition: background 0.3s; }
+    .ai-dot.busy    { background: var(--warning); box-shadow: 0 0 5px var(--warning); }
+    .ai-dot.done    { background: var(--success); }
+    .ai-dot.error   { background: var(--danger); }
+
+    /* ── AI Output ──────────────────────────────────────────────────── */
+    #ai-output {
+      flex: 1; padding: 14px 16px; overflow-y: auto;
+      font-size: 14px; line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+      font-family: var(--font-ui); min-height: 0;
+    }
+
+    /* ── Control panel ──────────────────────────────────────────────── */
+    #ctrl-panel .panel-body { padding: 12px 14px; gap: 10px; overflow-y: auto; }
+
+    .info-row {
+      display: grid; grid-template-columns: auto 1fr auto 1fr;
+      gap: 4px 12px; align-items: center; padding: 8px 10px;
+      background: var(--surface2); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .info-key   { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+    .info-val   { font-size: 12px; color: var(--text); font-family: var(--font-mono); }
+
+    .section-sep { height: 1px; background: var(--border); margin: 2px 0; flex-shrink: 0; }
+
+    #question-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+    #question-input {
+      width: 100%; min-height: 80px; max-height: 140px;
+      padding: 10px 12px; resize: vertical;
+      background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font: 14px var(--font-ui); line-height: 1.5; outline: none;
+      transition: border-color 0.2s;
+    }
+    #question-input:focus  { border-color: var(--accent); }
+    #question-input::placeholder { color: var(--text-dim); }
+
+    .btn-row { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-row > * { flex: 1; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 7px 12px; border: none; border-radius: var(--radius);
+      font: 13px var(--font-ui); font-weight: 500; cursor: pointer;
+      transition: opacity 0.15s, filter 0.15s; white-space: nowrap;
+      outline: none;
+    }
+    .btn:hover:not(:disabled) { filter: brightness(1.15); }
+    .btn:active:not(:disabled) { filter: brightness(0.9); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-accent   { background: var(--accent-dk); color: #fff; }
+    .btn-primary  { background: #1f4f8a; color: #fff; }
+    .btn-success  { background: #1a5c2e; color: var(--success); border: 1px solid #2ea043; }
+    .btn-danger   { background: #5c1a1a; color: var(--danger);  border: 1px solid var(--danger); }
+    .btn-neutral  { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-neutral:hover:not(:disabled) { color: var(--text); border-color: var(--accent); filter: none; }
+
+    /* ── Alert panel overrides ──────────────────────────────────────── */
+    #alert-panel { border-color: var(--border); }
+    #alert-panel.has-critical { border-color: rgba(248,81,73,.5); }
+    #alert-panel.has-warning  { border-color: rgba(210,153,34,.4); }
+
+    #alert-panel .panel-header { position: relative; }
+    #alert-panel.has-critical .panel-header { background: rgba(248,81,73,.08); }
+    #alert-panel.has-warning  .panel-header { background: rgba(210,153,34,.06); }
+
+    /* Count badge in header */
+    #alert-count-badge {
+      display: none; align-items: center; justify-content: center;
+      min-width: 20px; height: 18px; padding: 0 5px;
+      border-radius: 9px; font-size: 11px; font-weight: 700;
+      font-family: var(--font-ui);
+    }
+    #alert-count-badge.visible { display: inline-flex; }
+    #alert-count-badge.critical { background: var(--danger);  color: #fff; }
+    #alert-count-badge.warning  { background: var(--warning); color: #000; }
+    #alert-count-badge.info     { background: var(--info);    color: #fff; }
+
+    /* Pulsing dot for critical */
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      display: none;
+    }
+    .pulse-dot.active {
+      display: block;
+      background: var(--danger);
+      box-shadow: 0 0 0 0 rgba(248,81,73,.7);
+      animation: pulse-ring 1.4s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(248,81,73,.7); }
+      70%  { box-shadow: 0 0 0 7px rgba(248,81,73,0); }
+      100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); }
+    }
+
+    /* ── Alert list ─────────────────────────────────────────────────── */
+    #alert-list {
+      flex: 1; overflow-y: auto; padding: 8px 10px;
+      min-height: 0; display: flex; flex-direction: column; gap: 6px;
+    }
+
+    /* Alert card */
+    .alert-card {
+      display: flex; align-items: stretch;
+      border-radius: 6px; overflow: hidden;
+      border: 1px solid transparent;
+      transition: transform 0.15s, box-shadow 0.15s;
+      cursor: default;
+    }
+    .alert-card:hover {
+      transform: translateX(2px);
+      box-shadow: -3px 0 0 0 currentColor;
+    }
+
+    /* Severity left bar */
+    .alert-bar {
+      width: 3px; flex-shrink: 0;
+    }
+
+    /* Card body */
+    .alert-body {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px;
+    }
+
+    /* Severity icon */
+    .alert-icon {
+      font-size: 15px; flex-shrink: 0; line-height: 1;
+      width: 20px; text-align: center;
+    }
+
+    /* Text */
+    .alert-text { flex: 1; min-width: 0; }
+    .alert-ticker {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+      font-family: var(--font-mono);
+    }
+    .alert-title {
+      font-size: 12px; line-height: 1.4; margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Severity colour sets */
+    .sev-critical .alert-bar   { background: #f85149; }
+    .sev-critical .alert-body  { background: rgba(248,81,73,.08); border-left: none; }
+    .sev-critical              { border-color: rgba(248,81,73,.25); color: #f85149; }
+    .sev-critical .alert-title { color: #ffb3ae; }
+    .sev-critical .alert-ticker{ color: #ff6b6b; }
+    .sev-critical .alert-body  { animation: flash-critical 2.5s ease-in-out infinite; }
+    @keyframes flash-critical {
+      0%, 100% { background: rgba(248,81,73,.08); }
+      50%      { background: rgba(248,81,73,.15); }
+    }
+
+    .sev-high .alert-bar   { background: #ffa657; }
+    .sev-high .alert-body  { background: rgba(255,166,87,.07); }
+    .sev-high              { border-color: rgba(255,166,87,.2); color: #ffa657; }
+    .sev-high .alert-title { color: #d4a76a; }
+    .sev-high .alert-ticker{ color: #ffa657; }
+
+    .sev-warning .alert-bar   { background: #d29922; }
+    .sev-warning .alert-body  { background: rgba(210,153,34,.07); }
+    .sev-warning              { border-color: rgba(210,153,34,.2); color: #d29922; }
+    .sev-warning .alert-title { color: #b8963e; }
+    .sev-warning .alert-ticker{ color: #e3ac30; }
+
+    .sev-info .alert-bar   { background: #58a6ff; }
+    .sev-info .alert-body  { background: rgba(88,166,255,.06); }
+    .sev-info              { border-color: rgba(88,166,255,.18); color: #58a6ff; }
+    .sev-info .alert-title { color: var(--text-dim); }
+    .sev-info .alert-ticker{ color: #79b8ff; }
+
+    /* OK / empty state */
+    .alert-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; color: var(--text-dim); padding: 12px;
+    }
+    .alert-empty-icon { font-size: 32px; line-height: 1; }
+    .alert-empty-msg  { font-size: 13px; font-weight: 500; color: var(--success); }
+    .alert-empty-sub  { font-size: 11px; color: var(--text-dim); text-align: center; }
+
+    /* Market summary chips */
+    .mkt-chips {
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .mkt-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    }
+    .mkt-chip.up   { background: rgba(63,185,80,.15);  color: var(--success); }
+    .mkt-chip.down { background: rgba(248,81,73,.15);  color: var(--danger); }
+    .mkt-chip.flat { background: rgba(139,148,158,.12); color: var(--text-dim); }
+
+    /* ── Data table ─────────────────────────────────────────────────── */
+    #table-wrap { flex: 1; overflow: auto; min-height: 0; }
+    #data-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      font-family: var(--font-mono);
+    }
+    #data-table th {
+      position: sticky; top: 0; z-index: 1;
+      padding: 8px 12px; text-align: right;
+      background: var(--surface2); color: var(--text-dim);
+      font: 600 11px var(--font-ui); text-transform: uppercase;
+      letter-spacing: 0.4px; border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    #data-table th:first-child { text-align: center; }
+    #data-table td {
+      padding: 8px 12px; text-align: right;
+      border-bottom: 1px solid rgba(48,54,61,.5);
+      transition: background 0.1s;
+    }
+    #data-table td:first-child { text-align: center; font-weight: 600; color: var(--text-heading); }
+    #data-table tr:hover td { background: var(--surface2); }
+    #data-table tr.selected td { background: rgba(56,139,253,.12); }
+    #data-table tr { cursor: pointer; }
+
+    .up   { color: var(--up); }
+    .down { color: var(--down); }
+    .flat { color: var(--flat); }
+
+    .change-chip {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 12px; font-weight: 600;
+    }
+    .change-chip.up   { background: rgba(63,185,80,.15); }
+    .change-chip.down { background: rgba(248,81,73,.15); }
+    .change-chip.flat { background: rgba(139,148,158,.1); }
+
+    /* ── Status bar ─────────────────────────────────────────────────── */
+    #statusbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; height: 24px; min-height: 24px;
+      background: #010409; border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text-dim); flex-shrink: 0;
+    }
+
+    /* ── Chart modal ────────────────────────────────────────────────── */
+    #chart-modal {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(1,4,9,.85); align-items: center; justify-content: center;
+    }
+    #chart-modal.open { display: flex; }
+    #chart-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; max-width: 90vw; max-height: 90vh;
+      display: flex; flex-direction: column;
+    }
+    #chart-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    }
+    #chart-title { font-weight: 600; color: var(--text-heading); }
+    #chart-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; }
+    #chart-close:hover { color: var(--text); }
+    #chart-img { display: block; max-width: 100%; max-height: 75vh; object-fit: contain; }
+    #chart-period-row { display: flex; gap: 6px; padding: 10px 16px; background: var(--surface2); border-top: 1px solid var(--border); }
+
+    /* ── Lang toggle ───────────────────────────────────────────────── */
+    #lang-btn {
+      padding: 4px 10px; font-size: 12px; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-dim); cursor: pointer;
+    }
+    #lang-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Spinner ───────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      #grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(200px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <header id="header">
+    <div id="brand">
+      <span id="brand-name">FundPilot</span>
+      <span id="brand-sub" data-i18n="brand_sub">AI 基金监控</span>
+    </div>
+    <div id="header-right">
+      <div id="monitor-badge">
+        <div class="dot" id="monitor-dot"></div>
+        <span id="monitor-status-text" data-i18n="monitor_not_started">未启动</span>
+      </div>
+      <button id="lang-btn">EN</button>
+    </div>
+  </header>
+
+  <!-- ── Grid ───────────────────────────────────────────────────────── -->
+  <div id="grid">
+
+    <!-- Left-top: AI output -->
+    <div class="panel" id="ai-panel">
+      <div class="panel-header">
+        <span class="panel-title" data-i18n="frame_ai">AI 分析</span>
+        <div class="panel-meta">
+          <div class="ai-dot" id="ai-dot"></div>
+          <span id="ai-status" data-i18n="ai_status_ready">就绪</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="ai-output" data-i18n-placeholder="ai_initial">FundPilot 已就绪。
+
+这里会显示主动问答结果，或手动巡检分析。</div>
+      </div>
+    </div>
+
+    <!-- Right-top: Control -->
+    <div class="panel" id="ctrl-panel">
+      <div class="panel-header">
+        <span class="panel-title" data-i18n="frame_control">提问 / 控制</span>
+      </div>
+      <div class="panel-body" style="padding:12px 14px; gap:10px; overflow-y:auto; display:flex; flex-direction:column;">
+
+        <!-- Status info -->
+        <div class="info-row">
+          <span class="info-key" data-i18n="monitor_label">监控</span>
+          <span class="info-val" id="monitor-status-ctrl" data-i18n="monitor_not_started">未启动</span>
+          <span class="info-key" data-i18n="refresh_label">刷新</span>
+          <span class="info-val" id="refresh-time">--</span>
+        </div>
+
+        <div class="section-sep"></div>
+
+        <!-- Question input -->
+        <div>
+          <div id="question-label" data-i18n="question_label">向 AI 提问</div>
+          <textarea id="question-input" rows="4"
+            placeholder="今天这组ETF有没有明显风格分化？（Ctrl+Enter 发送）"
+            data-i18n-placeholder="question_placeholder"
+          ></textarea>
+        </div>
+
+        <!-- Row 1: primary actions -->
+        <div class="btn-row">
+          <button class="btn btn-accent"  id="btn-ask"     data-i18n="btn_ask">提问</button>
+          <button class="btn btn-primary" id="btn-inspect" data-i18n="btn_inspect">巡检</button>
+          <button class="btn btn-neutral" id="btn-refresh" data-i18n="btn_refresh">刷新</button>
+        </div>
+
+        <!-- Row 2: monitor + quick questions -->
+        <div class="btn-row">
+          <button class="btn btn-success" id="btn-start"  data-i18n="btn_start">启动监控</button>
+          <button class="btn btn-danger"  id="btn-stop"   data-i18n="btn_stop">停止</button>
+          <button class="btn btn-neutral" id="btn-q1"     data-i18n="btn_q1">谁最值得盯</button>
+          <button class="btn btn-neutral" id="btn-q2"     data-i18n="btn_q2">差异对比</button>
+        </div>
+
+        <!-- Row 3: chart + recommend -->
+        <div class="btn-row">
+          <button class="btn btn-neutral"  id="btn-chart"     data-i18n="btn_chart">K线图</button>
+          <button class="btn btn-primary"  id="btn-recommend" data-i18n="btn_recommend">智能评分</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Left-bottom: Alerts -->
+    <div class="panel" id="alert-panel">
+      <div class="panel-header">
+        <div class="panel-meta" style="gap:8px">
+          <div class="pulse-dot" id="alert-pulse"></div>
+          <span class="panel-title" data-i18n="frame_alerts">告警事项</span>
+        </div>
+        <div class="panel-meta" style="gap:8px">
+          <span id="alert-meta" data-i18n="alert_pending">待分析…</span>
+          <span id="alert-count-badge"></span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="alert-list"></div>
+      </div>
+    </div>
+
+    <!-- Right-bottom: Live data -->
+    <div class="panel" id="data-panel">
+      <div class="panel-header">
+        <span class="panel-title" data-i18n="frame_data">实时数据</span>
+        <span class="panel-meta" id="snapshot-meta" data-i18n="snapshot_none">暂无快照</span>
+      </div>
+      <div class="panel-body">
+        <div id="table-wrap">
+          <table id="data-table">
+            <thead>
+              <tr>
+                <th data-i18n="col_ticker">代码</th>
+                <th data-i18n="col_latest">最新价</th>
+                <th data-i18n="col_prev">前收盘</th>
+                <th data-i18n="col_change">涨跌幅</th>
+                <th data-i18n="col_time">时间</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Status bar ──────────────────────────────────────────────────── -->
+  <div id="statusbar">
+    <span id="status-msg" data-i18n="statusbar_ready">就绪</span>
+    <span id="clock"></span>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ── Chart modal ─────────────────────────────────────────────────── -->
+<div id="chart-modal">
+  <div id="chart-box">
+    <div id="chart-header">
+      <span id="chart-title">Chart</span>
+      <button id="chart-close">✕</button>
+    </div>
+    <img id="chart-img" src="" alt="K-Line Chart" />
+    <div id="chart-period-row">
+      <button class="btn btn-neutral btn-period" data-period="1mo">1M</button>
+      <button class="btn btn-neutral btn-period" data-period="3mo">3M</button>
+      <button class="btn btn-neutral btn-period" data-period="6mo">6M</button>
+      <button class="btn btn-neutral btn-period" data-period="1y">1Y</button>
+      <button class="btn btn-neutral btn-period" data-period="2y">2Y</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── i18n ─────────────────────────────────────────────────────────────── */
+const STRINGS = {
+  zh: {
+    brand_sub: "AI 基金监控",
+    frame_ai: "AI 分析", frame_control: "提问 / 控制",
+    frame_alerts: "告警事项", frame_data: "实时数据",
+    ai_status_ready: "就绪",
+    ai_initial: "FundPilot 已就绪。\n\n这里会显示主动问答结果，或手动巡检分析。",
+    monitor_label: "监控", refresh_label: "刷新",
+    monitor_not_started: "未启动", monitor_running: "运行中  PID {pid}",
+    monitor_stopped: "已停止", monitor_not_running: "未运行",
+    monitor_exited: "已退出",
+    question_label: "向 AI 提问",
+    question_placeholder: "今天这组ETF有没有明显风格分化？（Ctrl+Enter 发送）",
+    btn_ask: "提问", btn_inspect: "巡检", btn_refresh: "刷新",
+    btn_start: "启动监控", btn_stop: "停止",
+    btn_q1: "谁最值得盯", btn_q2: "差异对比",
+    btn_chart: "K线图", btn_recommend: "智能评分",
+    alert_pending: "待分析…", snapshot_none: "暂无快照",
+    no_alerts: "当前无告警",
+    market_summary: "市场：涨 {up} / 跌 {down} / 平 {flat}",
+    alert_count: "{n} 条告警",
+    snapshot_label: "快照：{t}",
+    col_ticker: "代码", col_latest: "最新价", col_prev: "前收盘",
+    col_change: "涨跌幅", col_time: "时间",
+    asking: "正在调用 AI，请稍候…",
+    ask_done: "问答完成", ask_fail: "问答失败",
+    inspecting: "正在巡检，请稍候…",
+    inspect_done: "巡检完成", inspect_fail: "巡检失败",
+    recommending: "正在生成评分，请稍候…",
+    recommend_done: "评分完成", recommend_fail: "评分失败",
+    chart_generating: "正在生成图表…",
+    chart_done: "图表已生成", chart_fail: "图表生成失败",
+    chart_no_select: "请先在数据表中选中一行",
+    monitor_already: "监控进程已在运行",
+    start_ok: "监控已启动", stop_ok: "监控已停止",
+    q1_text: "现在谁最值得重点盯？",
+    q2_text: "VUAG 和 CSP1 当前差异主要在哪？",
+    statusbar_ready: "就绪",
+    lang_btn: "EN",
+    ratings_header: "── 评分排行 ──────────────────────────────",
+    ratings_score: "分",
+    ratings_daily: "日",
+  },
+  en: {
+    brand_sub: "AI Fund Monitor",
+    frame_ai: "AI Analysis", frame_control: "Ask / Control",
+    frame_alerts: "Alerts", frame_data: "Live Data",
+    ai_status_ready: "Ready",
+    ai_initial: "FundPilot is ready.\n\nAI responses and inspection results will appear here.",
+    monitor_label: "Monitor", refresh_label: "Refreshed",
+    monitor_not_started: "Not started", monitor_running: "Running  PID {pid}",
+    monitor_stopped: "Stopped", monitor_not_running: "Not running",
+    monitor_exited: "Exited",
+    question_label: "Ask AI",
+    question_placeholder: "Any style divergence in today's ETFs? (Ctrl+Enter to send)",
+    btn_ask: "Ask", btn_inspect: "Inspect", btn_refresh: "Refresh",
+    btn_start: "Start Monitor", btn_stop: "Stop",
+    btn_q1: "Who to Watch", btn_q2: "Compare ETFs",
+    btn_chart: "K-Line", btn_recommend: "Recommend",
+    alert_pending: "Pending…", snapshot_none: "No snapshot",
+    no_alerts: "No active alerts",
+    market_summary: "Market: {up} up / {down} down / {flat} flat",
+    alert_count: "{n} alerts",
+    snapshot_label: "Snapshot: {t}",
+    col_ticker: "Ticker", col_latest: "Latest", col_prev: "Prev Close",
+    col_change: "Change %", col_time: "Time",
+    asking: "Calling AI, please wait…",
+    ask_done: "Ask complete", ask_fail: "Ask failed",
+    inspecting: "Inspecting, please wait…",
+    inspect_done: "Inspection complete", inspect_fail: "Inspection failed",
+    recommending: "Generating recommendations…",
+    recommend_done: "Recommend complete", recommend_fail: "Recommend failed",
+    chart_generating: "Generating chart…",
+    chart_done: "Chart generated", chart_fail: "Chart failed",
+    chart_no_select: "Please select a row in the table first",
+    monitor_already: "Monitor is already running",
+    start_ok: "Monitor started", stop_ok: "Monitor stopped",
+    q1_text: "Which asset deserves the most attention right now?",
+    q2_text: "What are the main differences between VUAG and CSP1?",
+    statusbar_ready: "Ready",
+    lang_btn: "中文",
+    ratings_header: "── Signal Rankings ───────────────────────",
+    ratings_score: "Score",
+    ratings_daily: "Daily",
+  }
+};
+
+let lang = "zh";
+function t(key, vars = {}) {
+  let s = STRINGS[lang][key] || key;
+  for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, v);
+  return s;
+}
+function applyLang() {
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    el.textContent = t(key);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    el.placeholder = t(key);
+  });
+  // Initial AI text on first load
+  if (!_aiHasContent) {
+    document.getElementById("ai-output").textContent = t("ai_initial");
+  }
+  updateMonitorUI(lastMonitorState);
+}
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+let _aiHasContent = false;
+let selectedTicker = null;
+let lastMonitorState = { running: false, pid: null, status: "not_started" };
+let _busy = false;
+
+/* ── DOM refs ──────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const aiOutput       = $("ai-output");
+const aiDot          = $("ai-dot");
+const aiStatus       = $("ai-status");
+const alertList      = $("alert-list");
+const alertMeta      = $("alert-meta");
+const tableBody      = $("table-body");
+const snapshotMeta   = $("snapshot-meta");
+const monitorDot     = $("monitor-dot");
+const monitorText    = $("monitor-status-text");
+const monitorCtrl    = $("monitor-status-ctrl");
+const refreshTime    = $("refresh-time");
+const statusMsg      = $("status-msg");
+const questionInput  = $("question-input");
+const chartModal     = $("chart-modal");
+const chartImg       = $("chart-img");
+const chartTitle     = $("chart-title");
+
+/* ── Helpers ───────────────────────────────────────────────────────────── */
+function setStatus(msg) { statusMsg.textContent = msg; }
+
+function setAi(text, statusKey, dotClass = "done") {
+  aiOutput.textContent = text;
+  aiStatus.textContent = t(statusKey);
+  aiDot.className = `ai-dot ${dotClass}`;
+  _aiHasContent = true;
+}
+
+function setBusy(busy) {
+  _busy = busy;
+  ["btn-ask","btn-inspect","btn-refresh","btn-recommend","btn-chart","btn-q1","btn-q2"].forEach(id => {
+    const el = $(id);
+    if (el) el.disabled = busy;
+  });
+}
+
+function fmtPrice(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? String(v) : n.toFixed(4);
+}
+function fmtChange(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return String(v);
+  const sign = n >= 0 ? "+" : "";
+  return `${sign}${n.toFixed(2)}%`;
+}
+function changeClass(v) {
+  const n = parseFloat(v);
+  if (isNaN(n) || Math.abs(n) < 0.05) return "flat";
+  return n > 0 ? "up" : "down";
+}
+
+function updateMonitorUI(state) {
+  lastMonitorState = state;
+  const txt = state.running
+    ? t("monitor_running", { pid: state.pid })
+    : state.status === "not_started" ? t("monitor_not_started")
+    : state.status === "stopped" ? t("monitor_stopped")
+    : t("monitor_exited");
+
+  monitorText.textContent = txt;
+  monitorCtrl.textContent = txt;
+
+  monitorDot.className = "dot" + (state.running ? " running" : "");
+}
+
+/* ── Clock ─────────────────────────────────────────────────────────────── */
+function tickClock() {
+  $("clock").textContent = new Date().toLocaleString("zh-CN", { hour12: false });
+  setTimeout(tickClock, 1000);
+}
+tickClock();
+
+/* ── Data table render ─────────────────────────────────────────────────── */
+function renderTable(snapshot) {
+  if (!snapshot || !snapshot.data) return;
+  const polledAt = snapshot.polled_at || "--";
+  snapshotMeta.textContent = t("snapshot_label", { t: polledAt });
+  refreshTime.textContent = polledAt;
+
+  const rows = Object.entries(snapshot.data).map(([ticker, item]) => ({
+    ticker,
+    latest:  item.latest_price,
+    prev:    item.previous_close,
+    change:  item.daily_change_pct,
+    ts:      item.timestamp || "--",
+    cls:     changeClass(item.daily_change_pct),
+  })).sort((a, b) => a.ticker.localeCompare(b.ticker));
+
+  tableBody.innerHTML = rows.map(r => `
+    <tr data-ticker="${r.ticker}" class="${selectedTicker === r.ticker ? 'selected' : ''}">
+      <td>${r.ticker}</td>
+      <td class="${r.cls}">${fmtPrice(r.latest)}</td>
+      <td class="flat">${fmtPrice(r.prev)}</td>
+      <td><span class="change-chip ${r.cls}">${fmtChange(r.change)}</span></td>
+      <td class="flat" style="font-size:11px">${r.ts}</td>
+      <td><button class="btn btn-neutral" style="padding:3px 8px;font-size:11px" onclick="openChart('${r.ticker}')">📈</button></td>
+    </tr>`).join("");
+
+  tableBody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const ticker = tr.dataset.ticker;
+      selectedTicker = ticker;
+      tableBody.querySelectorAll("tr").forEach(r => r.classList.toggle("selected", r.dataset.ticker === ticker));
+    });
+    tr.addEventListener("dblclick", () => openChart(tr.dataset.ticker));
+  });
+}
+
+/* ── Alerts render ─────────────────────────────────────────────────────── */
+function renderAlerts(alertData) {
+  const events  = alertData.events || [];
+  const summary = alertData.market_summary || {};
+  const panel   = $("alert-panel");
+  const pulse   = $("alert-pulse");
+  const badge   = $("alert-count-badge");
+
+  // severity helpers
+  const sevClass = sev => {
+    const s = (sev || "").toLowerCase();
+    return ["critical","danger","strong"].includes(s) ? "sev-critical"
+         : s === "high"    ? "sev-high"
+         : s === "warning" ? "sev-warning"
+         : "sev-info";
+  };
+  const sevIcon = sev => {
+    const s = (sev || "").toLowerCase();
+    return ["critical","danger","strong"].includes(s) ? "🔴"
+         : s === "high"    ? "🟠"
+         : s === "warning" ? "🟡"
+         : "🔵";
+  };
+
+  // ── Empty / all-clear state ──
+  if (!events.length) {
+    panel.className = "panel";
+    pulse.classList.remove("active");
+    badge.classList.remove("visible");
+    alertMeta.textContent = t("no_alerts");
+    alertMeta.style.color = "var(--success)";
+
+    const chips = summary.up_count !== undefined ? `
+      <div class="mkt-chips">
+        <span class="mkt-chip up">▲ ${summary.up_count}</span>
+        <span class="mkt-chip down">▼ ${summary.down_count}</span>
+        <span class="mkt-chip flat">— ${summary.flat_count}</span>
+      </div>` : "";
+
+    alertList.innerHTML = `
+      <div class="alert-empty">
+        <div class="alert-empty-icon">✅</div>
+        <div class="alert-empty-msg">${t("no_alerts")}</div>
+        ${chips}
+      </div>`;
+    return;
+  }
+
+  // ── Determine highest severity ──
+  const hasCritical = events.some(e => ["critical","danger","strong"].includes((e.severity||"").toLowerCase()));
+  const hasHigh     = events.some(e => (e.severity||"").toLowerCase() === "high");
+  const hasWarning  = events.some(e => (e.severity||"").toLowerCase() === "warning");
+
+  panel.className = "panel" + (hasCritical ? " has-critical" : hasWarning || hasHigh ? " has-warning" : "");
+  pulse.classList.toggle("active", hasCritical);
+
+  badge.textContent = events.length;
+  badge.className   = "alert-count-badge visible " + (hasCritical ? "critical" : hasHigh ? "warning" : "info");
+
+  alertMeta.textContent = t("alert_count", { n: events.length });
+  alertMeta.style.color = hasCritical ? "var(--danger)" : hasWarning || hasHigh ? "var(--warning)" : "var(--info)";
+
+  // Sort: critical first
+  const order = { critical:0, danger:0, strong:0, high:1, warning:2, info:3 };
+  const sorted = [...events].sort((a,b) =>
+    (order[(a.severity||"info").toLowerCase()] ?? 3) -
+    (order[(b.severity||"info").toLowerCase()] ?? 3)
+  );
+
+  alertList.innerHTML = sorted.map(ev => {
+    const sc     = sevClass(ev.severity);
+    const icon   = sevIcon(ev.severity);
+    const ticker = ev.ticker || "WATCHLIST";
+    const title  = ev.title  || "";
+    return `
+      <div class="alert-card ${sc}">
+        <div class="alert-bar"></div>
+        <div class="alert-body">
+          <span class="alert-icon">${icon}</span>
+          <div class="alert-text">
+            <div class="alert-ticker">${ticker}</div>
+            <div class="alert-title">${title}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+/* ── WebSocket for live data ───────────────────────────────────────────── */
+function connectWS() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === "tick") {
+        renderTable(msg.snapshot);
+        updateMonitorUI(msg.monitor);
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+connectWS();
+
+/* ── Fetch alerts on load and poll ────────────────────────────────────── */
+async function fetchAlerts() {
+  try {
+    const res = await fetch("/api/alerts");
+    if (res.ok) renderAlerts(await res.json());
+  } catch {}
+}
+fetchAlerts();
+setInterval(fetchAlerts, 10000);
+
+/* ── Actions ───────────────────────────────────────────────────────────── */
+async function askAI() {
+  const q = questionInput.value.trim();
+  if (!q) { setStatus(t("chart_no_select")); return; }
+  setBusy(true);
+  aiDot.className = "ai-dot busy";
+  aiStatus.textContent = t("asking");
+  aiOutput.textContent = t("asking");
+  setStatus(t("asking"));
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, lang }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "error");
+    setAi(data.ai_text, "ask_done", "done");
+    if (data.snapshot) renderTable(data.snapshot);
+    setStatus(t("ask_done"));
+  } catch (e) {
+    setAi(`${t("ask_fail")}: ${e.message}`, "ask_fail", "error");
+    setStatus(t("ask_fail"));
+  } finally { setBusy(false); }
+}
+
+async function inspectAI() {
+  setBusy(true);
+  aiDot.className = "ai-dot busy";
+  aiStatus.textContent = t("inspecting");
+  aiOutput.textContent = t("inspecting");
+  setStatus(t("inspecting"));
+  try {
+    const res = await fetch("/api/inspect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "error");
+    setAi(data.ai_text, "inspect_done", "done");
+    if (data.snapshot) renderTable(data.snapshot);
+    if (data.alerts) renderAlerts(data.alerts);
+    setStatus(t("inspect_done"));
+  } catch (e) {
+    setAi(`${t("inspect_fail")}: ${e.message}`, "inspect_fail", "error");
+    setStatus(t("inspect_fail"));
+  } finally { setBusy(false); }
+}
+
+async function recommendAI() {
+  setBusy(true);
+  aiDot.className = "ai-dot busy";
+  aiStatus.textContent = t("recommending");
+  aiOutput.textContent = t("recommending");
+  setStatus(t("recommending"));
+  try {
+    const res = await fetch("/api/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "error");
+
+    // Build output: ratings table + AI text
+    let out = "";
+    if (data.ratings) {
+      const sorted = Object.entries(data.ratings).sort((a, b) => b[1].score - a[1].score);
+      out += t("ratings_header") + "\n";
+      for (const [ticker, r] of sorted) {
+        const snap = r.price_snapshot || {};
+        const d = snap.daily_change_pct != null ? `${snap.daily_change_pct >= 0 ? "+" : ""}${(+snap.daily_change_pct).toFixed(2)}%` : "--";
+        out += `  ${ticker.padEnd(8)} ${r.signal_label.padEnd(12)} ${t("ratings_score")}: ${String(r.score).padStart(3)}   ${t("ratings_daily")}: ${d}\n`;
+      }
+      out += "\n";
+    }
+    out += data.ai_text || "(无回答)";
+    setAi(out, "recommend_done", "done");
+    if (data.snapshot) renderTable(data.snapshot);
+    setStatus(t("recommend_done"));
+  } catch (e) {
+    setAi(`${t("recommend_fail")}: ${e.message}`, "recommend_fail", "error");
+    setStatus(t("recommend_fail"));
+  } finally { setBusy(false); }
+}
+
+async function openChart(ticker) {
+  if (!ticker) {
+    if (!selectedTicker) { setStatus(t("chart_no_select")); return; }
+    ticker = selectedTicker;
+  }
+  const period = document.querySelector(".btn-period.active")?.dataset.period || "3mo";
+  chartTitle.textContent = `${ticker}  ${period}`;
+  chartImg.src = "";
+  chartModal.classList.add("open");
+  setStatus(t("chart_generating"));
+  try {
+    const res = await fetch("/api/chart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticker, period }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || "failed");
+    chartImg.src = `data:image/png;base64,${data.image_b64}`;
+    setStatus(t("chart_done"));
+  } catch (e) {
+    chartImg.alt = `${t("chart_fail")}: ${e.message}`;
+    setStatus(t("chart_fail"));
+  }
+}
+
+async function startMonitor() {
+  try {
+    const res = await fetch("/api/monitor/start", { method: "POST" });
+    const data = await res.json();
+    updateMonitorUI(data);
+    setStatus(data.ok ? t("start_ok") : t("monitor_already"));
+  } catch (e) { setStatus(String(e)); }
+}
+
+async function stopMonitor() {
+  try {
+    const res = await fetch("/api/monitor/stop", { method: "POST" });
+    const data = await res.json();
+    if (data.ok) updateMonitorUI({ running: false, pid: null, status: "stopped" });
+    setStatus(t("stop_ok"));
+  } catch (e) { setStatus(String(e)); }
+}
+
+async function refreshData() {
+  try {
+    const [snap, alerts] = await Promise.all([
+      fetch("/api/snapshot").then(r => r.json()),
+      fetch("/api/alerts").then(r => r.json()),
+    ]);
+    renderTable(snap);
+    renderAlerts(alerts);
+    setStatus(`Refreshed at ${new Date().toLocaleTimeString()}`);
+  } catch (e) { setStatus(String(e)); }
+}
+
+/* ── Event wiring ──────────────────────────────────────────────────────── */
+$("btn-ask").addEventListener("click", askAI);
+$("btn-inspect").addEventListener("click", inspectAI);
+$("btn-refresh").addEventListener("click", refreshData);
+$("btn-start").addEventListener("click", startMonitor);
+$("btn-stop").addEventListener("click", stopMonitor);
+$("btn-recommend").addEventListener("click", recommendAI);
+$("btn-chart").addEventListener("click", () => openChart(selectedTicker));
+$("btn-q1").addEventListener("click", () => {
+  questionInput.value = t("q1_text"); askAI();
+});
+$("btn-q2").addEventListener("click", () => {
+  questionInput.value = t("q2_text"); askAI();
+});
+
+questionInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); askAI(); }
+});
+
+// Chart modal
+$("chart-close").addEventListener("click", () => chartModal.classList.remove("open"));
+chartModal.addEventListener("click", e => { if (e.target === chartModal) chartModal.classList.remove("open"); });
+document.querySelectorAll(".btn-period").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".btn-period").forEach(b => b.classList.remove("active", "btn-accent"));
+    btn.classList.add("active", "btn-accent");
+    if (selectedTicker) openChart(selectedTicker);
+  });
+});
+
+// Language toggle
+$("lang-btn").addEventListener("click", () => {
+  lang = lang === "zh" ? "en" : "zh";
+  $("lang-btn").textContent = t("lang_btn");
+  applyLang();
+});
+
+// Initial render
+applyLang();
+</script>
+</body>
+</html>

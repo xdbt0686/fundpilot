@@ -68,7 +68,7 @@ def _parse_plan(raw: Any, question: str, watchlist: List[str]) -> List[SubTask]:
     if not isinstance(raw, list) or not raw:
         return _fallback_plan(question, watchlist)
 
-    valid_tools = {"poll", "overlap", "compare", "portfolio", "profile", "synthesize"}
+    valid_tools = {"poll", "overlap", "compare", "portfolio", "profile", "recommend", "alert", "history", "chart", "synthesize"}
     tasks: List[SubTask] = []
 
     for item in raw:

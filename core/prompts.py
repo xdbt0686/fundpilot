@@ -8,6 +8,13 @@ def _j(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, indent=2)
 
 
+_NO_META = (
+    "IMPORTANT: Do NOT describe, explain, or summarize the structure of the input data. "
+    "Do NOT analyze the JSON format. Do NOT add any meta-commentary about the data. "
+    "Only output the answer directly."
+)
+
+
 def _lang_directive(lang: str) -> str:
     """Return the output-language instruction for the given lang code."""
     if lang == "en":
@@ -48,7 +55,8 @@ def get_monitor_system(lang: str = "zh") -> str:
         "4. Do not express certainty about future price direction.\n"
         "5. Be practical, concise, and monitoring-oriented.\n"
         f"6. {_lang_directive(lang)}\n"
-        "8. Even if there is no anomaly, provide a useful inspection summary."
+        "8. Even if there is no anomaly, provide a useful inspection summary.\n"
+        f"9. {_NO_META}"
     ).strip()
 
 
@@ -88,7 +96,8 @@ def get_ask_system(lang: str = "zh") -> str:
         "4. Be direct, practical, and monitoring-oriented.\n"
         "5. For comparisons, focus on current movement, overlap, exposure style, and monitoring implications.\n"
         "6. Do not give overconfident financial predictions.\n"
-        f"7. {lang_rule}"
+        f"7. {lang_rule}\n"
+        f"8. {_NO_META}"
     ).strip()
 
 
@@ -190,29 +199,59 @@ def build_portfolio_prompt(
 
 # ── 购买建议 ──────────────────────────────────────────────────────────────────
 
-RECOMMEND_SYSTEM = """
-You are FundPilot, an AI investment assistant covering ETFs, stocks, indices, and crypto.
-
-Based on technical signal scores provided, give actionable buy/hold/sell recommendations.
-
-Rules:
-1. Prioritize assets with strong signals (strong_buy or strong_sell).
-2. Explain the key factors behind each recommendation briefly.
-3. Group recommendations clearly: 值得关注 / 谨慎观望 / 建议回避.
-4. Always add a risk disclaimer at the end.
-5. Do NOT invent data not in the input.
-6. Output must be in Chinese.
-7. Use this structure:
-   - 市场整体概况
-   - 值得关注（买入信号）
-   - 建议回避（卖出信号）
-   - 风险提示
-""".strip()
-
-
-def build_recommend_prompt(evaluation: Dict[str, Any], poll_data: Dict[str, Any]) -> str:
+def get_recommend_system(lang: str = "zh") -> str:
+    if lang == "en":
+        return (
+            "You are FundPilot, an AI investment assistant covering ETFs, stocks, indices, and crypto.\n\n"
+            "Based on technical signal scores provided, give actionable buy/hold/sell recommendations.\n\n"
+            "Rules:\n"
+            "1. Prioritize assets with strong signals (strong_buy or strong_sell).\n"
+            "2. Explain the key factors behind each recommendation briefly.\n"
+            "3. Group recommendations clearly: Watch / Cautious / Avoid.\n"
+            "4. Always add a risk disclaimer at the end.\n"
+            "5. Do NOT invent data not in the input.\n"
+            "6. Output must be in English.\n"
+            "7. Use this structure:\n"
+            "   - Market Overview\n"
+            "   - Worth Watching (buy signals)\n"
+            "   - Avoid (sell signals)\n"
+            "   - Risk Disclaimer\n"
+            f"8. {_NO_META}"
+        )
     return (
-        "请基于以下技术评分结果，给出投资建议。\n\n"
+        "You are FundPilot, an AI investment assistant covering ETFs, stocks, indices, and crypto.\n\n"
+        "Based on technical signal scores provided, give actionable buy/hold/sell recommendations.\n\n"
+        "Rules:\n"
+        "1. Prioritize assets with strong signals (strong_buy or strong_sell).\n"
+        "2. Explain the key factors behind each recommendation briefly.\n"
+        "3. Group recommendations clearly: 值得关注 / 谨慎观望 / 建议回避.\n"
+        "4. Always add a risk disclaimer at the end.\n"
+        "5. Do NOT invent data not in the input.\n"
+        "6. Output must be in Chinese.\n"
+        "7. Use this structure:\n"
+        "   - 市场整体概况\n"
+        "   - 值得关注（买入信号）\n"
+        "   - 建议回避（卖出信号）\n"
+        "   - 风险提示\n"
+        f"8. {_NO_META}"
+    )
+
+
+# Keep constant for backward compatibility with non-web callers
+RECOMMEND_SYSTEM = get_recommend_system("zh")
+
+
+def build_recommend_prompt(
+    evaluation: Dict[str, Any],
+    poll_data: Dict[str, Any],
+    lang: str = "zh",
+) -> str:
+    if lang == "en":
+        intro = "Based on the technical signal scores below, provide investment recommendations."
+    else:
+        intro = "请基于以下技术评分结果，给出投资建议。"
+    return (
+        f"{intro}\n\n"
         f"[Signal evaluation]\n{_j(evaluation)}\n\n"
         f"[Current market data]\n{_j(poll_data)}"
     )
@@ -235,6 +274,7 @@ Available tools:
 - recommend : score all watchlist assets and generate buy/hold/sell signals based on price momentum
 - alert     : run trigger rules on current data to detect notable moves, reversals, or stale data
 - history   : fetch OHLCV history and trend summary for a specific ticker (requires ticker, optional period: 1mo/3mo/6mo/1y)
+- chart     : generate and save a candlestick chart for a specific ticker, also returns history summary (requires ticker, optional period)
 - synthesize: combine all previous results into a final answer (no external tool)
 
 Rules:

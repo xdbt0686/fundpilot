@@ -12,14 +12,28 @@ SELL        = "sell"
 STRONG_SELL = "strong_sell"
 NO_DATA     = "no_data"
 
-_SIGNAL_LABELS = {
-    STRONG_BUY:  "强烈买入",
-    BUY:         "买入",
-    HOLD:        "持有观望",
-    SELL:        "卖出",
-    STRONG_SELL: "强烈卖出",
-    NO_DATA:     "数据不足",
+_SIGNAL_LABELS: Dict[str, Dict[str, str]] = {
+    "zh": {
+        STRONG_BUY:  "强烈买入",
+        BUY:         "买入",
+        HOLD:        "持有观望",
+        SELL:        "卖出",
+        STRONG_SELL: "强烈卖出",
+        NO_DATA:     "数据不足",
+    },
+    "en": {
+        STRONG_BUY:  "Strong Buy",
+        BUY:         "Buy",
+        HOLD:        "Hold",
+        SELL:        "Sell",
+        STRONG_SELL: "Strong Sell",
+        NO_DATA:     "No Data",
+    },
 }
+
+
+def _label(signal: str, lang: str) -> str:
+    return _SIGNAL_LABELS.get(lang, _SIGNAL_LABELS["zh"]).get(signal, signal)
 
 _SIGNAL_SCORE_MAP: List[Tuple[int, str]] = [
     (5,  STRONG_BUY),
@@ -46,71 +60,81 @@ def _safe_float(v: Any) -> Optional[float]:
 
 # ── 单项评分 ──────────────────────────────────────────────────────────────────
 
-def _score_daily(pct: Optional[float]) -> Tuple[int, str]:
+def _score_daily(pct: Optional[float], lang: str = "zh") -> Tuple[int, str]:
     if pct is None:
         return 0, ""
-    if pct >= 3.0:
-        return 2, f"今日大涨 {pct:+.2f}%"
-    if pct >= 1.0:
-        return 1, f"今日上涨 {pct:+.2f}%"
-    if pct <= -3.0:
-        return -2, f"今日大跌 {pct:+.2f}%"
-    if pct <= -1.0:
-        return -1, f"今日下跌 {pct:+.2f}%"
+    if lang == "en":
+        if pct >= 3.0:  return 2, f"Strong daily gain {pct:+.2f}%"
+        if pct >= 1.0:  return 1, f"Daily gain {pct:+.2f}%"
+        if pct <= -3.0: return -2, f"Strong daily loss {pct:+.2f}%"
+        if pct <= -1.0: return -1, f"Daily loss {pct:+.2f}%"
+        return 0, f"Flat today {pct:+.2f}%"
+    if pct >= 3.0:  return 2, f"今日大涨 {pct:+.2f}%"
+    if pct >= 1.0:  return 1, f"今日上涨 {pct:+.2f}%"
+    if pct <= -3.0: return -2, f"今日大跌 {pct:+.2f}%"
+    if pct <= -1.0: return -1, f"今日下跌 {pct:+.2f}%"
     return 0, f"今日持平 {pct:+.2f}%"
 
 
-def _score_week(pct: Optional[float]) -> Tuple[int, str]:
+def _score_week(pct: Optional[float], lang: str = "zh") -> Tuple[int, str]:
     if pct is None:
         return 0, ""
-    if pct >= 5.0:
-        return 2, f"近一周累涨 {pct:+.2f}%，短期动能强劲"
-    if pct >= 2.0:
-        return 1, f"近一周上涨 {pct:+.2f}%"
-    if pct <= -5.0:
-        return -2, f"近一周累跌 {pct:+.2f}%，短期动能疲弱"
-    if pct <= -2.0:
-        return -1, f"近一周下跌 {pct:+.2f}%"
+    if lang == "en":
+        if pct >= 5.0:  return 2, f"Strong weekly gain {pct:+.2f}%, solid short-term momentum"
+        if pct >= 2.0:  return 1, f"Weekly gain {pct:+.2f}%"
+        if pct <= -5.0: return -2, f"Strong weekly loss {pct:+.2f}%, weak short-term momentum"
+        if pct <= -2.0: return -1, f"Weekly loss {pct:+.2f}%"
+        return 0, ""
+    if pct >= 5.0:  return 2, f"近一周累涨 {pct:+.2f}%，短期动能强劲"
+    if pct >= 2.0:  return 1, f"近一周上涨 {pct:+.2f}%"
+    if pct <= -5.0: return -2, f"近一周累跌 {pct:+.2f}%，短期动能疲弱"
+    if pct <= -2.0: return -1, f"近一周下跌 {pct:+.2f}%"
     return 0, ""
 
 
-def _score_month(pct: Optional[float]) -> Tuple[int, str]:
+def _score_month(pct: Optional[float], lang: str = "zh") -> Tuple[int, str]:
     if pct is None:
         return 0, ""
-    if pct >= 10.0:
-        return 2, f"近一月累涨 {pct:+.2f}%，中期趋势向上"
-    if pct >= 3.0:
-        return 1, f"近一月上涨 {pct:+.2f}%"
-    if pct <= -10.0:
-        return -2, f"近一月累跌 {pct:+.2f}%，中期趋势向下"
-    if pct <= -3.0:
-        return -1, f"近一月下跌 {pct:+.2f}%"
+    if lang == "en":
+        if pct >= 10.0:  return 2, f"Monthly gain {pct:+.2f}%, uptrend mid-term"
+        if pct >= 3.0:   return 1, f"Monthly gain {pct:+.2f}%"
+        if pct <= -10.0: return -2, f"Monthly loss {pct:+.2f}%, downtrend mid-term"
+        if pct <= -3.0:  return -1, f"Monthly loss {pct:+.2f}%"
+        return 0, ""
+    if pct >= 10.0:  return 2, f"近一月累涨 {pct:+.2f}%，中期趋势向上"
+    if pct >= 3.0:   return 1, f"近一月上涨 {pct:+.2f}%"
+    if pct <= -10.0: return -2, f"近一月累跌 {pct:+.2f}%，中期趋势向下"
+    if pct <= -3.0:  return -1, f"近一月下跌 {pct:+.2f}%"
     return 0, ""
 
 
-def _score_vs_ma20(pct: Optional[float]) -> Tuple[int, str]:
+def _score_vs_ma20(pct: Optional[float], lang: str = "zh") -> Tuple[int, str]:
     if pct is None:
         return 0, ""
-    if pct >= 5.0:
-        return 1, f"价格高于 MA20 {pct:+.2f}%，位于均线上方"
-    if pct <= -5.0:
-        return -1, f"价格低于 MA20 {pct:+.2f}%，跌破均线支撑"
+    if lang == "en":
+        if pct >= 5.0:  return 1, f"Price {pct:+.2f}% above MA20"
+        if pct <= -5.0: return -1, f"Price {pct:+.2f}% below MA20"
+        return 0, f"Price near MA20 (deviation {pct:+.2f}%)"
+    if pct >= 5.0:  return 1, f"价格高于 MA20 {pct:+.2f}%，位于均线上方"
+    if pct <= -5.0: return -1, f"价格低于 MA20 {pct:+.2f}%，跌破均线支撑"
     return 0, f"价格接近 MA20（偏差 {pct:+.2f}%）"
 
 
-def _score_volume(ratio: Optional[float]) -> Tuple[int, str]:
+def _score_volume(ratio: Optional[float], lang: str = "zh") -> Tuple[int, str]:
     if ratio is None:
         return 0, ""
-    if ratio >= 2.0:
-        return 1, f"成交量为均量的 {ratio:.1f}x，放量明显"
-    if ratio <= 0.4:
-        return -1, f"成交量仅均量的 {ratio:.1f}x，缩量萎靡"
+    if lang == "en":
+        if ratio >= 2.0: return 1, f"Volume {ratio:.1f}x average, notable surge"
+        if ratio <= 0.4: return -1, f"Volume only {ratio:.1f}x average, very low activity"
+        return 0, ""
+    if ratio >= 2.0: return 1, f"成交量为均量的 {ratio:.1f}x，放量明显"
+    if ratio <= 0.4: return -1, f"成交量仅均量的 {ratio:.1f}x，缩量萎靡"
     return 0, ""
 
 
 # ── 单资产评分 ────────────────────────────────────────────────────────────────
 
-def evaluate_asset(ticker: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_asset(ticker: str, data: Dict[str, Any], lang: str = "zh") -> Dict[str, Any]:
     """
     对单只资产评分并生成信号。
 
@@ -140,20 +164,21 @@ def evaluate_asset(ticker: str, data: Dict[str, Any]) -> Dict[str, Any]:
 
     has_data = any(v is not None for v in [daily_pct, week_pct, month_pct])
     if not has_data:
+        no_data_reason = "Insufficient data" if lang == "en" else "数据不足，无法评分"
         return {
             "ticker":        ticker,
             "signal":        NO_DATA,
-            "signal_label":  _SIGNAL_LABELS[NO_DATA],
+            "signal_label":  _label(NO_DATA, lang),
             "score":         0,
-            "factors":       ["数据不足，无法评分"],
+            "factors":       [no_data_reason],
             "price_snapshot": data,
         }
 
-    s, r = _score_daily(daily_pct);  _add(s, r)
-    s, r = _score_week(week_pct);    _add(s, r)
-    s, r = _score_month(month_pct);  _add(s, r)
-    s, r = _score_vs_ma20(vs_ma20);  _add(s, r)
-    s, r = _score_volume(vol_ratio); _add(s, r)
+    s, r = _score_daily(daily_pct, lang);  _add(s, r)
+    s, r = _score_week(week_pct, lang);    _add(s, r)
+    s, r = _score_month(month_pct, lang);  _add(s, r)
+    s, r = _score_vs_ma20(vs_ma20, lang);  _add(s, r)
+    s, r = _score_volume(vol_ratio, lang); _add(s, r)
 
     total  = sum(scores)
     signal = _score_to_signal(total)
@@ -161,7 +186,7 @@ def evaluate_asset(ticker: str, data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ticker":        ticker,
         "signal":        signal,
-        "signal_label":  _SIGNAL_LABELS[signal],
+        "signal_label":  _label(signal, lang),
         "score":         total,
         "factors":       factors,
         "price_snapshot": {
@@ -177,7 +202,7 @@ def evaluate_asset(ticker: str, data: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── 全 watchlist 评分 ─────────────────────────────────────────────────────────
 
-def evaluate_all(poll_data: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_all(poll_data: Dict[str, Any], lang: str = "zh") -> Dict[str, Any]:
     """
     对 poll_data["data"] 中所有资产评分，按信号分组返回。
 
@@ -195,7 +220,7 @@ def evaluate_all(poll_data: Dict[str, Any]) -> Dict[str, Any]:
     for ticker, item in data.items():
         if not isinstance(item, dict):
             continue
-        ratings[ticker] = evaluate_asset(ticker, item)
+        ratings[ticker] = evaluate_asset(ticker, item, lang=lang)
 
     # 按信号分组
     by_signal: Dict[str, List[str]] = {

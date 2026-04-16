@@ -14,15 +14,16 @@ USAGE = """
 FundPilot CLI
 
 用法：
-  python main.py ask        <问题>   向 AI 提问（关键词路由）
-  python main.py agent      <问题>   向 AI 提问（三层 Agent：规划→执行→校验）★
-  python main.py recommend           全 watchlist 技术评分 + AI 购买建议  ★
-  python main.py overlap             分析 watchlist 各 ETF 持仓重叠度
-  python main.py compare    <A> <B>  横向对比两只 ETF
-  python main.py portfolio           整体组合分析
-  python main.py monitor             单次监控巡检
-  python main.py loop                启动持续监控循环（Ctrl+C 停止）
-  python main.py dashboard           启动图形界面
+  python main.py ask        <问题>         向 AI 提问（关键词路由）
+  python main.py agent      <问题>         向 AI 提问（三层 Agent：规划→执行→校验）★
+  python main.py recommend                 全 watchlist 技术评分 + AI 购买建议  ★
+  python main.py chart      <代码> [周期]  绘制 K 线图（周期：1mo/3mo/6mo/1y，默认 3mo）★
+  python main.py overlap                   分析 watchlist 各 ETF 持仓重叠度
+  python main.py compare    <A> <B>        横向对比两只 ETF
+  python main.py portfolio                 整体组合分析
+  python main.py monitor                   单次监控巡检
+  python main.py loop                      启动持续监控循环（Ctrl+C 停止）
+  python main.py dashboard                 启动图形界面
 """.strip()
 
 
@@ -134,6 +135,25 @@ def cmd_portfolio() -> None:
         print(f"\n  警告：{w}")
 
 
+def cmd_chart(args: List[str]) -> None:
+    if not args:
+        print("用法：python main.py chart <代码> [周期]")
+        print("周期可选：1mo / 3mo / 6mo / 1y / 2y / 5y（默认 3mo）")
+        return
+
+    ticker = args[0].upper()
+    period = args[1].lower() if len(args) > 1 else "3mo"
+
+    from tools.chart import plot_kline
+
+    print(f"正在拉取 {ticker} {period} 历史数据...")
+    try:
+        plot_kline(ticker, period=period, show=True, save=True)
+        print(f"图表已保存至 data/charts/{ticker}_{period}.png")
+    except ValueError as e:
+        print(f"错误：{e}")
+
+
 def cmd_recommend() -> None:
     from monitors.price_poller import poll_once
     from rules.recommendation_rules import evaluate_all
@@ -208,7 +228,7 @@ def cmd_loop() -> None:
 
 def cmd_dashboard() -> None:
     import subprocess
-    subprocess.run([sys.executable, str(BASE_DIR / "fundpilot_dashboard.py")])
+    subprocess.run([sys.executable, str(BASE_DIR / "web_main.py")])
 
 
 # ── 入口 ──────────────────────────────────────────────────────────────────────
@@ -217,6 +237,7 @@ _COMMANDS = {
     "ask":       lambda rest: cmd_ask(rest),
     "agent":     lambda rest: cmd_agent(rest),
     "recommend": lambda _:    cmd_recommend(),
+    "chart":     lambda rest: cmd_chart(rest),
     "overlap":   lambda _:    cmd_overlap(),
     "compare":   lambda rest: cmd_compare(rest),
     "portfolio": lambda _:    cmd_portfolio(),

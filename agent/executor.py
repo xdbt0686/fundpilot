@@ -74,6 +74,39 @@ def _run_tool(
         from tools.etf_profile import get_etf_profile
         return get_etf_profile(ticker) or {"error": f"未找到 {ticker}"}
 
+    if task.tool == "recommend":
+        from rules.recommendation_rules import evaluate_all
+        return evaluate_all(current_poll)
+
+    if task.tool == "alert":
+        from rules.trigger_rules import evaluate_triggers
+        return evaluate_triggers(current_poll)
+
+    if task.tool == "history":
+        ticker = task.args.get("ticker") or ""
+        if not ticker:
+            found = [t for t in watchlist if t in task.task.upper()]
+            ticker = found[0] if found else watchlist[0]
+        period = task.args.get("period", "3mo")
+        from tools.chart import get_history_summary
+        return get_history_summary(ticker, period=period)
+
+    if task.tool == "chart":
+        ticker = task.args.get("ticker") or ""
+        if not ticker:
+            found = [t for t in watchlist if t in task.task.upper()]
+            ticker = found[0] if found else watchlist[0]
+        period = task.args.get("period", "3mo")
+        from tools.chart import plot_kline, get_history_summary
+        try:
+            path = plot_kline(ticker, period=period, show=False, save=True)
+            summary = get_history_summary(ticker, period=period)
+            summary["chart_saved"] = str(path) if path else None
+        except Exception as e:
+            summary = get_history_summary(ticker, period=period)
+            summary["chart_error"] = str(e)
+        return summary
+
     # synthesize 不调工具
     return None
 
