@@ -269,6 +269,7 @@ async def get_history(ticker: str, period: str = "3mo"):
         loop = asyncio.get_event_loop()
 
         def _fetch():
+            import math
             t = yf.Ticker(ticker.upper())
             hist = t.history(period=period)
             if hist.empty:
@@ -276,15 +277,22 @@ async def get_history(ticker: str, period: str = "3mo"):
             bars = []
             for date, row in hist.iterrows():
                 try:
-                    vol = int(row["Volume"])
+                    o = float(row["Open"])
+                    h = float(row["High"])
+                    l = float(row["Low"])
+                    c = float(row["Close"])
+                    # skip bars with NaN prices (TradingView rejects them)
+                    if any(math.isnan(x) for x in (o, h, l, c)):
+                        continue
+                    vol = int(row["Volume"]) if not math.isnan(float(row["Volume"])) else 0
                 except Exception:
-                    vol = 0
+                    continue
                 bars.append({
                     "time":   date.strftime("%Y-%m-%d"),
-                    "open":   round(float(row["Open"]),  4),
-                    "high":   round(float(row["High"]),  4),
-                    "low":    round(float(row["Low"]),   4),
-                    "close":  round(float(row["Close"]), 4),
+                    "open":   round(o, 4),
+                    "high":   round(h, 4),
+                    "low":    round(l, 4),
+                    "close":  round(c, 4),
                     "volume": vol,
                 })
             return bars
