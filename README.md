@@ -62,8 +62,23 @@ fundpilot/
 │   ├── compare.py           # Side-by-side ETF comparison
 │   ├── portfolio.py         # Portfolio composition analysis
 │   ├── chart.py             # Candlestick chart generation (mplfinance)
+│   ├── price_tool.py        # On-demand price lookup helper
 │   ├── generate_training_data.py  # Generates intent classifier training set
 │   └── train_intent_classifier.py # PyTorch MLP training script
+│
+├── normalizers/
+│   └── etf_normalizer.py    # Normalises raw yfinance ETF data into a standard schema
+│
+├── notifiers/
+│   └── console_notifier.py  # Prints formatted alert messages to the console
+│
+├── models/
+│   └── schemas.py           # Pydantic / dataclass schemas shared across modules
+│
+├── tests/
+│   ├── test_recommendation_rules.py
+│   ├── test_router.py
+│   └── test_trigger_rules.py
 │
 ├── data/
 │   ├── watchlist.json       # Your asset watchlist (edit to customise)
@@ -71,6 +86,7 @@ fundpilot/
 │
 ├── web_main.py              # Web dashboard entry point (FastAPI + browser open)
 ├── run_monitor_loop.py      # Continuous background monitoring loop
+├── run_monitor_once.py      # Run a single monitor cycle and print results (debug helper)
 ├── main.py                  # CLI entry point
 └── start_agent.bat          # Windows one-click launcher
 ```
@@ -135,7 +151,7 @@ Choose from the menu:
 
 ```bash
 # Web dashboard (opens browser automatically)
-python web_main.py
+python web_main.py [--port 8765] [--host 127.0.0.1]
 
 # 3-layer AI agent Q&A
 python main.py agent

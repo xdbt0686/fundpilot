@@ -21,9 +21,17 @@ def _open_browser() -> None:
 
 
 if __name__ == "__main__":
+    import argparse
     import uvicorn
     from api.server import app  # noqa: F401 — triggers FastAPI app import
 
-    print(f"\n  FundPilot Web  →  {URL}\n  Press Ctrl+C to stop.\n")
-    threading.Thread(target=_open_browser, daemon=True).start()
-    uvicorn.run("api.server:app", host=HOST, port=PORT, reload=False, log_level="warning")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=PORT)
+    parser.add_argument("--host", type=str, default=HOST)
+    args = parser.parse_args()
+
+    url = f"http://{args.host}:{args.port}"
+    print(f"\n  FundPilot Web  →  {url}\n  Press Ctrl+C to stop.\n")
+    threading.Thread(target=lambda: (time.sleep(1.2), webbrowser.open(url)), daemon=True).start()
+    uvicorn.run("api.server:app", host=args.host, port=args.port, reload=False,
+                log_level="warning", timeout_graceful_shutdown=0)
