@@ -10,16 +10,16 @@ FundPilot fetches live market data, evaluates technical signals, generates AI co
 
 - **Multi-asset monitoring** — UK UCITS ETFs, US stocks, UK blue chips, global indices, crypto (29 assets out of the box)
 - **Real-time web dashboard** — FastAPI + single-page app with WebSocket push, auto-refreshes every 3 seconds
+- **Interactive K-line charts** — TradingView Lightweight Charts embedded in the dashboard; click any ticker to load OHLCV candlesticks with 1M / 3M / 6M / 1Y / 2Y period selector
 - **3-layer AI Agent** — Planner → Executor → Critic architecture for structured, self-checking analysis
-- **PyTorch intent classifier** — character n-gram MLP trained on 390 labelled examples (86% test accuracy), routes user questions to the right tool automatically; falls back to regex rules when confidence is low
+- **PyTorch intent classifier** — character n-gram MLP trained on 390 labelled examples; accuracy **89.8%** on held-out test set (+15.3 pp over regex baseline), routes user questions to the correct tool automatically
 - **Technical scoring** — daily / weekly / monthly momentum, MA20 deviation, volume anomaly
 - **Buy/hold/sell recommendations** — AI-generated, based on quantitative signal scores
 - **ETF overlap analysis** — detects redundant holdings across the watchlist
 - **Portfolio composition report** — regional exposure, EM allocation, TER summary
 - **Bilingual UI** — toggle all labels, buttons, and AI responses between 中文 and English with one click
-- **Alert panel** — card-style severity display with animated highlights for critical events
-- **Candlestick charts** — generated on demand, returned inline in the dashboard
-- **Fully local** — runs on Ollama (qwen2.5:7b by default), no API keys required
+- **Alert highlights** — colour-coded row highlights and severity dots for critical events
+- **Fully local** — runs on Ollama (qwen2.5:14b by default), no API keys required
 
 ---
 
@@ -31,7 +31,7 @@ fundpilot/
 │   └── server.py            # FastAPI backend — REST + WebSocket endpoints
 │
 ├── frontend/
-│   └── index.html           # Single-page web app (vanilla JS, dark theme)
+│   └── index.html           # Single-page web app (vanilla JS, TradingView Charts, dark theme)
 │
 ├── agent/
 │   ├── event_agent.py       # Core AI agent (monitor + Q&A)
@@ -86,7 +86,7 @@ fundpilot/
 3. Pull the model and start the server:
 
 ```bash
-ollama pull qwen2.5:7b
+ollama pull qwen2.5:14b
 ollama serve          # keep this window open
 ```
 
@@ -97,8 +97,19 @@ git clone https://github.com/xdbt0686/fundpilot.git
 cd fundpilot
 python -m venv .venv
 .venv\Scripts\activate        # Windows
-pip install fastapi uvicorn yfinance requests mplfinance torch transformers
+pip install fastapi uvicorn yfinance requests mplfinance torch
 ```
+
+### Train the intent classifier
+
+Required on first run (model files are not checked in):
+
+```bash
+python tools/generate_training_data.py
+python tools/train_intent_classifier.py
+```
+
+Trains in ~1 second on a consumer GPU. Outputs to `data/intent_model/`.
 
 ### Run
 
@@ -150,10 +161,14 @@ Open `http://localhost:8765` after launching. The interface has four panels:
 
 | Panel | Contents |
 |-------|----------|
-| AI Output | Streaming AI analysis and Q&A responses |
-| Controls | Ask a question, run inspection, get recommendations, generate charts |
-| Alerts | Card-style event feed — colour-coded by severity, animated for critical events |
-| Market Data | Live price table with change % and signal badges |
+| AI Output | AI analysis and Q&A responses |
+| Controls | Ask a question, run inspection, get recommendations, start/stop monitor |
+| K-Line Chart | Interactive TradingView candlestick chart — click any row in the data table to load |
+| Market Data | Live price table with change % and alert highlights |
+
+### K-Line Chart
+
+Click any ticker row in the data table to load its candlestick chart. Use the period buttons to switch between **1M / 3M / 6M / 1Y / 2Y**. Data is fetched from `/api/history/{ticker}` and rendered client-side via TradingView Lightweight Charts.
 
 ### Language Toggle
 
@@ -169,11 +184,22 @@ Use **Start Monitor** / **Stop Monitor** buttons in the dashboard to manage the 
 
 User questions are automatically routed to the correct tool using a two-stage classifier:
 
-1. **PyTorch MLP** — character bigram/trigram features → embedding → mean-pool → 2-layer MLP  
-   Trained on 390 labelled examples across 4 intents (`overlap`, `compare`, `portfolio`, `ask`)  
-   Test accuracy: **86%**, trains in ~1 second on a consumer GPU
+1. **PyTorch MLP** — character n-gram features (unigram + bigram + trigram) → embedding → mean-pool → 2-layer MLP
+   Trained on 390 labelled examples across 4 intents (`overlap`, `compare`, `portfolio`, `ask`)
 
 2. **Regex fallback** — activates when ML confidence < 60% or model is not loaded
+
+### Benchmark (59-sample held-out test set)
+
+| Method | Correct | Accuracy | Main failure mode |
+|---|---|---|---|
+| Regex keyword matching | 44 / 59 | 74.6% | Paraphrased and cross-lingual queries |
+| PyTorch n-gram MLP | 53 / 59 | **89.8%** | Semantically ambiguous queries |
+| **Improvement** | **+9** | **+15.3 pp** | |
+
+The classifier handles natural-language paraphrases that regex cannot match, e.g.:
+- "帮我看看有没有买了差不多东西的ETF" → correctly routed to `overlap` (no keyword "重叠")
+- "find duplicate stocks across my ETFs" → correctly routed to `overlap` (English, no Chinese patterns)
 
 To retrain after adding new examples:
 
@@ -243,13 +269,20 @@ All market data comes from **Yahoo Finance** via the `yfinance` library.
 
 ## LLM Configuration
 
-Default model: `qwen2.5:7b` (runs locally via Ollama, recommended for RTX 4060 / 8 GB VRAM)
+Default model: `qwen2.5:14b` (runs locally via Ollama, recommended for RTX 4060 / 8 GB VRAM)
 
 To switch models:
 
 ```bash
-set OLLAMA_MODEL=qwen2.5:14b   # higher quality, needs more VRAM
-set OLLAMA_MODEL=llama3.2:3b   # lighter alternative
+set OLLAMA_MODEL=qwen2.5:7b    # lighter, faster
+set OLLAMA_MODEL=llama3.1:8b   # alternative architecture
+```
+
+To store models on a non-system drive:
+
+```bash
+setx OLLAMA_MODELS "D:\ollama\models"
+# restart Ollama after setting
 ```
 
 Configure a remote Ollama instance:

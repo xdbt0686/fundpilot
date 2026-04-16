@@ -44,3 +44,7 @@ data/charts/
 data/intent_train.jsonl
 data/intent_test.jsonl
 data/intent_model/
+
+# Local reports (not for version control)
+*代码详解报告*.md
+*_report*.md
