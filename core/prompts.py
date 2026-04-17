@@ -9,8 +9,11 @@ def _j(obj: Any) -> str:
 
 
 _NO_META = (
-    "IMPORTANT: Do NOT describe, explain, or summarize the structure of the input data. "
-    "Do NOT analyze the JSON format. Do NOT add any meta-commentary about the data. "
+    "IMPORTANT: Do NOT reproduce, quote, or echo raw JSON, Python dicts, data tables, "
+    "or unformatted price lists in your output — not even a partial block. "
+    "Do NOT describe or summarize the structure of the input data. "
+    "Do NOT add any meta-commentary about the data format. "
+    "Mention specific numbers inline in natural prose only (e.g. 'VUAG rose +1.2% this week'). "
     "Only output the answer directly. "
     "Do NOT use LaTeX math notation (no \\[, \\], \\frac, \\text, $$ etc.). "
     "Write all numbers and formulas as plain text."

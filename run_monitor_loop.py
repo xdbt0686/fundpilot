@@ -69,8 +69,13 @@ def main() -> None:
     agent     = EventAgent()
 
     print("[FundPilot] monitor loop started.")
-    print(f"[FundPilot] watchlist: {watchlist}")
-    print(f"[FundPilot] settings: {settings}")
+    print(f"[FundPilot] watchlist ({len(watchlist)}): {', '.join(watchlist)}")
+    print(
+        f"[FundPilot] settings — "
+        f"poll every {settings.get('poll_interval_seconds', '?')}s  |  "
+        f"AI cooldown {settings.get('ai_cooldown_minutes', '?')} min  |  "
+        f"alert threshold {settings.get('daily_move_alert_pct', '?')}%"
+    )
 
     while True:
         print(f"\n[FundPilot] polling at {now_iso()}")
@@ -93,9 +98,19 @@ def main() -> None:
                 cooldown_minutes=int(settings["ai_cooldown_minutes"]),
             )
 
-            print("[FundPilot] market summary:", trigger_result.get("market_summary"))
-            print("[FundPilot] events:", len(trigger_result.get("events", [])))
-            print("[FundPilot] should_run_ai:", should_run_ai, "ai_allowed:", ai_allowed)
+            ms = trigger_result.get("market_summary") or {}
+            top = ms.get("max_abs_move_ticker")
+            top_pct = ms.get("max_abs_move_pct")
+            top_str = f"  |  最大波动 {top} {float(top_pct):+.2f}%" if top and top_pct is not None else ""
+            print(
+                f"[FundPilot] 市场概况 — "
+                f"上涨 {ms.get('up_count', 0)} / "
+                f"下跌 {ms.get('down_count', 0)} / "
+                f"持平 {ms.get('flat_count', 0)}"
+                f"{top_str}"
+            )
+            n_events = len(trigger_result.get("events", []))
+            print(f"[FundPilot] 触发事件 {n_events} 个  |  AI {'待触发' if should_run_ai else '本轮跳过'}  |  冷却 {'已解除' if ai_allowed else '未到'}")
 
             if should_run_ai and ai_allowed:
                 ai_result = agent.analyze_monitor_cycle(

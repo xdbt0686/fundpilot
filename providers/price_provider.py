@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import yfinance as yf
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -94,10 +95,7 @@ def get_latest_price_raw(ticker: str) -> Optional[Dict]:
     if hist is None or hist.empty:
         return None
 
-    closes  = hist["Close"].dropna()
-    volumes = hist["Volume"].dropna() if "Volume" in hist else None
-    highs   = hist["High"].dropna()  if "High"   in hist else None
-    lows    = hist["Low"].dropna()   if "Low"    in hist else None
+    closes = hist["Close"].dropna()
 
     if len(closes) < 1:
         return None
@@ -105,16 +103,39 @@ def get_latest_price_raw(ticker: str) -> Optional[Dict]:
     latest_close = float(closes.iloc[-1])
     prev_close   = float(closes.iloc[-2]) if len(closes) >= 2 else None
 
+    # Anchor all same-bar fields to the exact date of the latest close,
+    # so latest_price, day_high, day_low, and volume always come from the
+    # same bar rather than each series' own last non-NaN row.
+    last_date = closes.index[-1]
+
+    def _bar_val(col):
+        """Return the value at last_date for col, or None if missing/NaN."""
+        if col not in hist.columns:
+            return None
+        v = hist.at[last_date, col]
+        try:
+            return None if math.isnan(float(v)) else v
+        except (TypeError, ValueError):
+            return None
+
+    day_high = _safe(_bar_val("High"))
+    day_low  = _safe(_bar_val("Low"))
+
+    raw_vol       = _bar_val("Volume")
+    latest_volume = int(raw_vol) if raw_vol is not None else None
+
     daily_change_pct = None
     if prev_close and prev_close != 0:
         daily_change_pct = round((latest_close - prev_close) / prev_close * 100, 2)
 
-    # 周涨跌（约 5 个交易日前）
-    week_change_pct = None
+    # 周涨跌（约 5 个交易日前）——同时存点数，避免 LLM 用错公式推算
+    week_change_pct    = None
+    week_change_points = None
     if len(closes) >= 6:
-        p = float(closes.iloc[-6])
-        if p != 0:
-            week_change_pct = round((latest_close - p) / p * 100, 2)
+        week_ago = float(closes.iloc[-6])
+        if week_ago != 0:
+            week_change_pct    = round((latest_close - week_ago) / week_ago * 100, 2)
+            week_change_points = round(latest_close - week_ago, 4)
 
     # 月涨跌
     month_change_pct = None
@@ -131,31 +152,32 @@ def get_latest_price_raw(ticker: str) -> Optional[Dict]:
     if ma20 and ma20 != 0:
         vs_ma20_pct = round((latest_close - ma20) / ma20 * 100, 2)
 
-    # 成交量（指数/加密货币可能无意义，保留原始值）
-    latest_volume = int(volumes.iloc[-1]) if volumes is not None and len(volumes) >= 1 else None
-    avg_volume    = int(volumes.tail(20).mean()) if volumes is not None and len(volumes) >= 2 else None
-    volume_ratio  = round(latest_volume / avg_volume, 2) if latest_volume and avg_volume and avg_volume > 0 else None
-
-    # 当日高低
-    day_high = _safe(highs.iloc[-1]) if highs is not None and len(highs) >= 1 else None
-    day_low  = _safe(lows.iloc[-1])  if lows  is not None and len(lows)  >= 1 else None
+    # 平均成交量对齐到 closes 的日期索引，避免跨系列的 bar 偏移
+    if "Volume" in hist.columns:
+        aligned_vol = hist["Volume"].reindex(closes.index).dropna()
+        avg_volume  = int(aligned_vol.tail(20).mean()) if len(aligned_vol) >= 2 else None
+    else:
+        avg_volume = None
+    volume_ratio = round(latest_volume / avg_volume, 2) if latest_volume and avg_volume and avg_volume > 0 else None
 
     return {
-        "ticker":           ticker,
-        "symbol":           symbol,
-        "asset_type":       _classify_asset(ticker, symbol),
-        "latest_price":     _safe(latest_close),
-        "previous_close":   _safe(prev_close),
-        "day_high":         day_high,
-        "day_low":          day_low,
-        "daily_change_pct": daily_change_pct,
-        "week_change_pct":  week_change_pct,
-        "month_change_pct": month_change_pct,
-        "ma5":              ma5,
-        "ma20":             ma20,
-        "vs_ma20_pct":      vs_ma20_pct,
-        "volume":           latest_volume,
-        "avg_volume":       avg_volume,
-        "volume_ratio":     volume_ratio,
-        "timestamp":        datetime.now().isoformat(timespec="seconds"),
+        "ticker":              ticker,
+        "symbol":              symbol,
+        "asset_type":          _classify_asset(ticker, symbol),
+        "latest_price":        _safe(latest_close),
+        "previous_close":      _safe(prev_close),
+        "day_high":            day_high,
+        "day_low":             day_low,
+        "daily_change_pct":    daily_change_pct,
+        "week_change_pct":     week_change_pct,
+        "week_change_points":  week_change_points,
+        "month_change_pct":    month_change_pct,
+        "ma5":                 ma5,
+        "ma20":                ma20,
+        "vs_ma20_pct":         vs_ma20_pct,
+        "volume":              latest_volume,
+        "avg_volume":          avg_volume,
+        "volume_ratio":        volume_ratio,
+        "data_date":           str(last_date.date()),
+        "timestamp":           datetime.now().isoformat(timespec="seconds"),
     }
